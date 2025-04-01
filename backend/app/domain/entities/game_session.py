@@ -12,7 +12,8 @@ class GameSession:
     game_type: str  # e.g., "vocabulary", "grammar", "listening"
     difficulty_level: str  # e.g., "beginner", "intermediate", "advanced"
     id: UUID = field(default_factory=uuid4)
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=datetime.now(datetime.timezone.utc))
+    updated_at: datetime = field(default_factory=datetime.now(datetime.timezone.utc))
     completed_at: Optional[datetime] = None
     score: int = 0
     max_score: int = 0

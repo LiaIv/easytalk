@@ -14,8 +14,8 @@ class User:
     id: UUID = field(default_factory=uuid4)
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(datetime.timezone.utc))
+    updated_at: datetime = field(default_factory=datetime.now(datetime.timezone.utc))
     avatar_url: Optional[str] = None
     is_active: bool = True
     experience_points: int = 0

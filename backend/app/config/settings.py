@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # JWT Configuration
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development-only")
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30 # 30 day
     
     # Database Configuration
     MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
