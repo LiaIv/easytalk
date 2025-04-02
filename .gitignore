@@ -2,3 +2,9 @@
 .DS_Store
 .idea/
 .vscode/
+# Игнорировать пользовательские файлы Xcode
+*.xcuserstate
+*.xcworkspace
+*.xcuserdata/
+DerivedData/
+Pods/
