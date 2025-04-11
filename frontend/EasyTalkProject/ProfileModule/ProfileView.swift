@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     @State private var userName: String = "Ваше имя"
@@ -13,16 +14,21 @@ struct ProfileView: View {
     @State private var showEditBanner: Bool = false
     @FocusState private var isTextFieldFocused: Bool
 
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var avatarImage: Image = Image("avatar") // начальное изображение
+
     var body: some View {
         ZStack {
             VStack {
                 HStack(alignment: .center, spacing: 25) {
-                    Image("avatar")
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 80, height: 80)
-                        .clipShape(Circle())
-                        .shadow(radius: 4)
+                    PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
+                        avatarImage
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Button(action: {
@@ -59,8 +65,17 @@ struct ProfileView: View {
                     .resizable()
                     .ignoresSafeArea()
             )
+        // функция изменить фото
+            .onChange(of: selectedPhoto) {
+                Task {
+                    if let data = try? await selectedPhoto?.loadTransferable(type: Data.self),
+                       let uiImage = UIImage(data: data) {
+                        avatarImage = Image(uiImage: uiImage)
+                    }
+                }
+            }
 
-            
+            // Баннер изменения имени
             if showEditBanner {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
@@ -70,7 +85,7 @@ struct ProfileView: View {
                         .font(.title2)
                         .foregroundColor(.black)
 
-                    TextField("Ведите новое имя", text: $newUserName)
+                    TextField("Введите новое имя", text: $newUserName)
                         .padding()
                         .background(Color.white)
                         .cornerRadius(10)
@@ -121,4 +136,5 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
 }
+
 
