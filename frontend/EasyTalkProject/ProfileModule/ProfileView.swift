@@ -15,7 +15,10 @@ struct ProfileView: View {
     @FocusState private var isTextFieldFocused: Bool
 
     @State private var selectedPhoto: PhotosPickerItem? = nil
-    @State private var avatarImage: Image = Image("avatar") // начальное изображение
+    @State private var avatarImage: Image = Image("avatar")
+
+    let userNameKey = "userNameKey"
+    let userImageKey = "userImageKey"
 
     var body: some View {
         ZStack {
@@ -65,17 +68,29 @@ struct ProfileView: View {
                     .resizable()
                     .ignoresSafeArea()
             )
-        // функция изменить фото
+            .onAppear {
+                // Загрузка имени
+                if let savedName = UserDefaults.standard.string(forKey: userNameKey) {
+                    userName = savedName
+                }
+
+                // Загрузка фото
+                if let imageData = UserDefaults.standard.data(forKey: userImageKey),
+                   let uiImage = UIImage(data: imageData) {
+                    avatarImage = Image(uiImage: uiImage)
+                }
+            }
             .onChange(of: selectedPhoto) {
                 Task {
-                    if let data = try? await selectedPhoto?.loadTransferable(type: Data.self),
+                    if let data = try? await
+                        selectedPhoto?.loadTransferable(type: Data.self),
                        let uiImage = UIImage(data: data) {
                         avatarImage = Image(uiImage: uiImage)
+                        UserDefaults.standard.set(data, forKey: userImageKey)
                     }
                 }
             }
-
-            // Баннер изменения имени
+            // функция изменения имени
             if showEditBanner {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
@@ -108,6 +123,7 @@ struct ProfileView: View {
                         Button(action: {
                             userName = newUserName
                             showEditBanner = false
+                            UserDefaults.standard.set(userName, forKey: userNameKey)
                         }) {
                             Text("изменить")
                                 .font(.system(size: 14))
@@ -136,5 +152,6 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
 }
+
 
 
