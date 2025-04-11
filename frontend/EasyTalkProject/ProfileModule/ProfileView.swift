@@ -17,18 +17,18 @@ struct ProfileView: View {
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var avatarImage: Image = Image("avatar")
     
-    // Для уровней
-    @State private var levels = ["Begin", "Pre-Inter", "Interm", "Скоро!"]
-    @State private var selectedLevel = "Beginner"
+    @State private var levels = ["Begin", "Pre-Inter", "Interm", "Soon!"]
+    @State private var selectedLevel = "Begin"
     @State private var stars = [
         "Begin": "gold_star",
         "Pre-Inter": "white_star",
         "Interm": "white_star",
-        "Скоро!": "white_star"
+        "Soon!": "white_star"
     ]
 
     let userNameKey = "userNameKey"
     let userImageKey = "userImageKey"
+    let userLevelKey = "userLevelKey"
 
     var body: some View {
         ZStack {
@@ -81,7 +81,6 @@ struct ProfileView: View {
                 HStack(spacing: 20) {
                     ForEach(levels, id: \.self) { level in
                         VStack {
-                            // Отображение звезды для уровня
                             Image(stars[level] ?? "white_star")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
@@ -94,10 +93,10 @@ struct ProfileView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         .onTapGesture {
-                            if level != "Скоро!" {
-                                // Если выбран уровень, кроме "Скоро!", меняем состояние звезд
+                            if level != "Soon!" {
                                 self.selectedLevel = level
                                 self.updateStars(for: level)
+                                UserDefaults.standard.set(level, forKey: userLevelKey)
                             }
                         }
                     }
@@ -123,6 +122,12 @@ struct ProfileView: View {
                 if let imageData = UserDefaults.standard.data(forKey: userImageKey),
                    let uiImage = UIImage(data: imageData) {
                     avatarImage = Image(uiImage: uiImage)
+                }
+
+                // Загрузка выбранного уровня
+                if let savedLevel = UserDefaults.standard.string(forKey: userLevelKey) {
+                    selectedLevel = savedLevel
+                    updateStars(for: savedLevel)
                 }
             }
             .onChange(of: selectedPhoto) {
@@ -197,9 +202,9 @@ struct ProfileView: View {
     func updateStars(for level: String) {
         for (key, _) in stars {
             if key == level {
-                stars[key] = "gold_star" // Устанавливаем красную звезду для выбранного уровня
+                stars[key] = "gold_star"
             } else {
-                stars[key] = "white_star" // Белая звезда для остальных
+                stars[key] = "white_star"
             }
         }
     }
@@ -208,7 +213,6 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
 }
-
 
 
 
