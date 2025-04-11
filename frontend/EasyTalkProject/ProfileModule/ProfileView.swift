@@ -16,6 +16,16 @@ struct ProfileView: View {
 
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var avatarImage: Image = Image("avatar")
+    
+    // Для уровней
+    @State private var levels = ["Begin", "Pre-Inter", "Interm", "Скоро!"]
+    @State private var selectedLevel = "Beginner"
+    @State private var stars = [
+        "Begin": "gold_star",
+        "Pre-Inter": "white_star",
+        "Interm": "white_star",
+        "Скоро!": "white_star"
+    ]
 
     let userNameKey = "userNameKey"
     let userImageKey = "userImageKey"
@@ -23,6 +33,7 @@ struct ProfileView: View {
     var body: some View {
         ZStack {
             VStack {
+                Spacer().frame(height: 10)
                 HStack(alignment: .center, spacing: 25) {
                     PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
                         avatarImage
@@ -59,7 +70,41 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 20)
+                
+                Spacer().frame(height: 30)
 
+                Text("выбери свой уровень")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                HStack(spacing: 20) {
+                    ForEach(levels, id: \.self) { level in
+                        VStack {
+                            // Отображение звезды для уровня
+                            Image(stars[level] ?? "white_star")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 40, height: 40)
+
+                            Text(level)
+                                .foregroundColor(.black)
+                                .padding(.top, 10)
+                                .font(.subheadline)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .onTapGesture {
+                            if level != "Скоро!" {
+                                // Если выбран уровень, кроме "Скоро!", меняем состояние звезд
+                                self.selectedLevel = level
+                                self.updateStars(for: level)
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 20)
+                .frame(maxWidth: .infinity, alignment: .center) // Выравниваем весь HStack по центру
+                
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -147,11 +192,23 @@ struct ProfileView: View {
             }
         }
     }
+
+    // Обновляем состояние звезд
+    func updateStars(for level: String) {
+        for (key, _) in stars {
+            if key == level {
+                stars[key] = "gold_star" // Устанавливаем красную звезду для выбранного уровня
+            } else {
+                stars[key] = "white_star" // Белая звезда для остальных
+            }
+        }
+    }
 }
 
 #Preview {
     ProfileView()
 }
+
 
 
 
