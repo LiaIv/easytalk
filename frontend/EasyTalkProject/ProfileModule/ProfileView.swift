@@ -73,14 +73,14 @@ struct ProfileView: View {
                 .padding(.horizontal)
                 .padding(.top, 20)
                 
-                Spacer().frame(height: 30)
+                Spacer().frame(height: 40)
 
                 Text("выбери свой уровень")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                HStack(spacing: 20) {
+                HStack(spacing: 30) {
                     ForEach(levels, id: \.self) { level in
                         VStack {
                             Image(stars[level] ?? "white_star")
@@ -105,7 +105,21 @@ struct ProfileView: View {
                         }
                     }
                 }
-                .padding(.top, 20)
+                VStack {
+                    Text("Твои достижения")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            Color.white.opacity(0.7)
+                                .cornerRadius(10)
+                        )
+                        .padding(.top, 20)
+                }
+
+                .padding(.top, 5)
                 .frame(maxWidth: .infinity, alignment: .center)
                 
                 VStack {
