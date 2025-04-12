@@ -85,6 +85,8 @@ struct ProfileView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 40, height: 40)
+                                .scaleEffect(level == selectedLevel ? 1.2 : 1.0)
+                                .animation(.easeInOut(duration: 0.3), value: selectedLevel)
 
                             Text(level)
                                 .foregroundColor(.black)
