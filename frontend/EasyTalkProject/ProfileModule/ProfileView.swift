@@ -27,6 +27,7 @@ struct ProfileView: View {
     ]
 
     @State private var showExitAppConfirmation = false
+    @State private var achievementsNotAvailable: Bool = true // когда достижения будут реализованы
     
     let userNameKey = "userNameKey"
     let userImageKey = "userImageKey"
@@ -107,16 +108,25 @@ struct ProfileView: View {
                 }
                 VStack {
                     Text("Твои достижения")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                        .font(.headline)
                         .foregroundColor(.black)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            Color.white.opacity(0.7)
-                                .cornerRadius(10)
-                        )
-                        .padding(.top, 20)
+                        .padding(.top, 10)
+
+                    if achievementsNotAvailable {
+                        Text("Soon!")
+                            .font(.subheadline)
+                            .foregroundColor(.black)
+                            .frame(width: 300, height: 60)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.7))
+                            )
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 10)
+                    } else {
+                        // Здесь будет код для отображения достижений, когда они будут реализованы
+                    }
                 }
 
                 .padding(.top, 5)
