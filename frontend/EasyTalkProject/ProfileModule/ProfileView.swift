@@ -26,6 +26,8 @@ struct ProfileView: View {
         "Soon!": "white_star"
     ]
 
+    @State private var showExitAppConfirmation = false
+    
     let userNameKey = "userNameKey"
     let userImageKey = "userImageKey"
     let userLevelKey = "userLevelKey"
@@ -104,7 +106,31 @@ struct ProfileView: View {
                     }
                 }
                 .padding(.top, 20)
-                .frame(maxWidth: .infinity, alignment: .center) // Выравниваем весь HStack по центру
+                .frame(maxWidth: .infinity, alignment: .center)
+                
+                VStack {
+                    Spacer()
+                    Button(action: {
+                        showExitAppConfirmation = true
+                    }) {
+                        Text("Выйти")
+                            .font(.system(size: 16, weight: .bold))
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 30)
+                            .padding(.bottom, 60)
+                    }
+                }
+                .alert("Выйти из приложения?", isPresented: $showExitAppConfirmation) {
+                    Button("Отмена", role: .cancel) {}
+                    Button("Да, выйти", role: .destructive) {
+                        exit(0)
+                    }
+                }
                 
                 Spacer()
             }
@@ -173,9 +199,13 @@ struct ProfileView: View {
                         }
 
                         Button(action: {
-                            userName = newUserName
-                            showEditBanner = false
-                            UserDefaults.standard.set(userName, forKey: userNameKey)
+                            let trimmedName = newUserName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            
+                            if !trimmedName.isEmpty && trimmedName.count <= 22 {
+                                userName = trimmedName
+                                showEditBanner = false
+                                UserDefaults.standard.set(userName, forKey: userNameKey)
+                            }
                         }) {
                             Text("изменить")
                                 .font(.system(size: 14))
@@ -200,7 +230,6 @@ struct ProfileView: View {
         }
     }
 
-    // Обновляем состояние звезд
     func updateStars(for level: String) {
         for (key, _) in stars {
             if key == level {
