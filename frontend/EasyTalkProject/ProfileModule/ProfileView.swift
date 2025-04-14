@@ -160,7 +160,7 @@ struct ProfileView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(
-                Image("backgroundImage")
+                Image("backgroundProfile")
                     .resizable()
                     .ignoresSafeArea()
             )
