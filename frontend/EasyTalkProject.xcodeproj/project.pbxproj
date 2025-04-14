@@ -7,10 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4089CAED2DAD1EBE0025FC00 /* SentenceGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4089CAEC2DAD1EBE0025FC00 /* SentenceGameScreen.swift */; };
+		4089CAEF2DAD1ED20025FC00 /* AnimalGuessGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4089CAEE2DAD1ED20025FC00 /* AnimalGuessGameScreen.swift */; };
 		552AB5062DA55DBF00D567F0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 552AB5052DA55DBF00D567F0 /* FirebaseAuth */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4089CAEC2DAD1EBE0025FC00 /* SentenceGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceGameScreen.swift; sourceTree = "<group>"; };
+		4089CAEE2DAD1ED20025FC00 /* AnimalGuessGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimalGuessGameScreen.swift; sourceTree = "<group>"; };
 		552AB4DE2DA5579000D567F0 /* EasyTalkProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EasyTalkProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -37,6 +41,8 @@
 		552AB4D52DA5579000D567F0 = {
 			isa = PBXGroup;
 			children = (
+				4089CAEC2DAD1EBE0025FC00 /* SentenceGameScreen.swift */,
+				4089CAEE2DAD1ED20025FC00 /* AnimalGuessGameScreen.swift */,
 				552AB4E02DA5579000D567F0 /* EasyTalkProject */,
 				552AB4DF2DA5579000D567F0 /* Products */,
 			);
@@ -128,6 +134,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4089CAED2DAD1EBE0025FC00 /* SentenceGameScreen.swift in Sources */,
+				4089CAEF2DAD1ED20025FC00 /* AnimalGuessGameScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
