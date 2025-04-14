@@ -7,32 +7,31 @@
 
 import SwiftUI
 
-import SwiftUI
-
 struct GameView: View {
-    // Переменная для толщины обводки
-    let borderWidth: CGFloat = 3
+    let borderWidth: CGFloat = 6
 
     var body: some View {
-        ZStack {
-            Image("backgroundGame")
-                .resizable()
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 20) {
-                Spacer().frame(height: 80)
-                
-                // Кнопка "Составь предложение"
-                NavigationLink(destination: SentenceGameScreen()) {
-                    GameButton(title: "Составь предложение", borderWidth: borderWidth)
-                }
+        NavigationStack {
+            ZStack {
+                Image("backgroundGame")
+                    .resizable()
+                    .edgesIgnoringSafeArea(.all)
 
-                // Кнопка "Угадай животное"
-                NavigationLink(destination: AnimalGuessGameScreen()) {
-                    GameButton(title: "Угадай животное", borderWidth: borderWidth)
-                }
+                VStack(spacing: 20) {
+                    Spacer().frame(height: 80)
 
-                Spacer()
+                    // Кнопка "Составь предложение"
+                    NavigationLink(destination: SentenceGameScreen()) {
+                        GameButton(title: "Составь предложение", borderWidth: borderWidth)
+                    }
+
+                    // Кнопка "Угадай животное"
+                    NavigationLink(destination: AnimalGuessGameScreen()) {
+                        GameButton(title: "Угадай животное", borderWidth: borderWidth)
+                    }
+
+                    Spacer()
+                }
             }
         }
     }
@@ -41,7 +40,7 @@ struct GameView: View {
 struct GameButton: View {
     let title: String
     let borderWidth: CGFloat
-    
+
     var body: some View {
         ZStack {
             Image("backgroundGameOne")
@@ -52,35 +51,14 @@ struct GameButton: View {
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(Color.white, lineWidth: borderWidth)
                 )
+                .contentShape(Rectangle()) // Важно для клика по всей области
 
             Text(title)
-                .font(.custom("Georgia", size: 28)) .foregroundColor(Color("colorGameText"))
+                .font(.custom("Georgia", size: 28))
+                .foregroundColor(Color("colorGameText"))
         }
     }
 }
-
-
-// Заглушки для экранов игр
-struct SentenceGameScreen: View {
-    var body: some View {
-        Text("Экран 'Составь предложение'")
-    }
-}
-
-struct AnimalGuessGameScreen: View {
-    var body: some View {
-        Text("Экран 'Угадай животное'")
-    }
-}
-
-// Превью
-//struct MiniGamesScreen_Previews: PreviewProvider {
-//    static var previews: some View {
-//        NavigationView {
-//            MiniGamesScreen()
-//        }
-//    }
-//}
 
 
 #Preview {
