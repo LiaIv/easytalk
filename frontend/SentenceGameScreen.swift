@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct SentenceGameScreen: View {
+    @State private var currentIndex: Int = 0
     @State private var correctSentence: String = ""
     @State private var shuffledWords: [String] = []
     @State private var userSentence: [String] = []
     @State private var showNext: Bool = false
-    @State private var currentSentenceIndex: Int = 0
-    @State private var navigateToMainMenu = false
+    @Environment(\.dismiss) private var dismiss
 
     let beginnerSentences = [
         "I have a cat.",
@@ -25,16 +25,11 @@ struct SentenceGameScreen: View {
         "I am happy today.",
         "My name is Anna.",
         "They are good friends.",
-        "I like this movie."
+        "I live in Moscow."
     ]
 
     var body: some View {
         VStack(spacing: 20) {
-
-            NavigationLink(destination: GameView(), isActive: $navigateToMainMenu) {
-                EmptyView()
-            }
-            .hidden()
 
             Text("Составь предложение")
                 .font(.title)
@@ -62,7 +57,8 @@ struct SentenceGameScreen: View {
                                     .transition(.scale.combined(with: .opacity))
                                     .animation(.spring(), value: userSentence)
                             }
-                        }.padding()
+                        }
+                        .padding()
                     }
                 }
             }
@@ -104,12 +100,13 @@ struct SentenceGameScreen: View {
         .alert(isPresented: $showNext) {
             Alert(
                 title: Text("Отлично!"),
-                message: Text(currentSentenceIndex < beginnerSentences.count ? "Следующее предложение." : "Ты выполнил все задания!"),
+                message: Text(currentIndex + 1 < beginnerSentences.count ? "Следующее предложение." : "Ты завершил игру."),
                 dismissButton: .default(Text("OK")) {
-                    if currentSentenceIndex < beginnerSentences.count {
+                    if currentIndex + 1 < beginnerSentences.count {
+                        currentIndex += 1
                         loadNewSentence()
                     } else {
-                        navigateToMainMenu = true
+                        dismiss()
                     }
                 }
             )
@@ -117,22 +114,20 @@ struct SentenceGameScreen: View {
     }
 
     func loadNewSentence() {
-        if currentSentenceIndex < beginnerSentences.count {
-            let sentence = beginnerSentences[currentSentenceIndex]
-            correctSentence = sentence.trimmingCharacters(in: .punctuationCharacters)
-            shuffledWords = correctSentence.components(separatedBy: " ").shuffled()
-            userSentence = []
-        }
+        let sentence = beginnerSentences[currentIndex]
+        correctSentence = sentence.trimmingCharacters(in: .punctuationCharacters)
+        shuffledWords = correctSentence.components(separatedBy: " ").shuffled()
+        userSentence = []
     }
 
     func checkSentence() {
         let user = userSentence.joined(separator: " ")
         if user + "." == correctSentence + "." {
-            currentSentenceIndex += 1
             showNext = true
         }
     }
 }
+
 
 struct WrapWordsView: View {
     let words: [String]
