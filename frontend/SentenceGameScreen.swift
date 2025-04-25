@@ -13,6 +13,7 @@ struct SentenceGameScreen: View {
     @State private var shuffledWords: [String] = []
     @State private var userSentence: [String] = []
     @State private var showNext: Bool = false
+    @State private var message: String = ""
     @Environment(\.dismiss) private var dismiss
 
     @State private var progressColors: [Color] = Array(repeating: .gray, count: 10)
@@ -113,8 +114,8 @@ struct SentenceGameScreen: View {
         }
         .alert(isPresented: $showNext) {
             Alert(
-                title: Text("Отлично!"),
-                message: Text(currentIndex + 1 < beginnerSentences.count ? "Следующее предложение." : "Ты завершил игру."),
+                title: Text(currentIndex + 1 < beginnerSentences.count ? "Следующее предложение." : "Ты завершил игру."),
+                message: Text(message),
                 dismissButton: .default(Text("OK")) {
                     if currentIndex + 1 < beginnerSentences.count {
                         currentIndex += 1
@@ -138,10 +139,10 @@ struct SentenceGameScreen: View {
         let user = userSentence.joined(separator: " ")
         let isCorrect = (user + "." == correctSentence + ".")
         progressColors[currentIndex] = isCorrect ? .green : .red
+        message = isCorrect ? "Верно!" : "Не верно."
         showNext = true
     }
 }
-
 
 struct WrapWordsView: View {
     let words: [String]
