@@ -51,7 +51,7 @@ struct GameButton: View {
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(Color.white, lineWidth: borderWidth)
                 )
-                .contentShape(Rectangle()) // Важно для клика по всей области
+                .contentShape(Rectangle())
 
             Text(title)
                 .font(.custom("Georgia", size: 28))
