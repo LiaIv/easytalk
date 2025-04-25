@@ -12,15 +12,29 @@ struct SentenceGameScreen: View {
     @State private var shuffledWords: [String] = []
     @State private var userSentence: [String] = []
     @State private var showNext: Bool = false
+    @State private var currentSentenceIndex: Int = 0
+    @State private var navigateToMainMenu = false
 
     let beginnerSentences = [
         "I have a cat.",
         "She is my sister.",
-        "This is my book."
+        "This is my book.",
+        "We like pizza.",
+        "He is a doctor.",
+        "The sun is yellow.",
+        "I am happy today.",
+        "My name is Anna.",
+        "They are good friends.",
+        "I like this movie."
     ]
 
     var body: some View {
         VStack(spacing: 20) {
+
+            NavigationLink(destination: GameView(), isActive: $navigateToMainMenu) {
+                EmptyView()
+            }
+            .hidden()
 
             Text("Составь предложение")
                 .font(.title)
@@ -90,30 +104,35 @@ struct SentenceGameScreen: View {
         .alert(isPresented: $showNext) {
             Alert(
                 title: Text("Отлично!"),
-                message: Text("Следующее предложение."),
+                message: Text(currentSentenceIndex < beginnerSentences.count ? "Следующее предложение." : "Ты выполнил все задания!"),
                 dismissButton: .default(Text("OK")) {
-                    loadNewSentence()
+                    if currentSentenceIndex < beginnerSentences.count {
+                        loadNewSentence()
+                    } else {
+                        navigateToMainMenu = true
+                    }
                 }
             )
         }
     }
 
     func loadNewSentence() {
-        let level = UserDefaults.standard.string(forKey: "userLevelKey") ?? "Begin"
-        let sentence: String = beginnerSentences.randomElement()!
-        correctSentence = sentence.trimmingCharacters(in: .punctuationCharacters)
-        shuffledWords = correctSentence.components(separatedBy: " ").shuffled()
-        userSentence = []
+        if currentSentenceIndex < beginnerSentences.count {
+            let sentence = beginnerSentences[currentSentenceIndex]
+            correctSentence = sentence.trimmingCharacters(in: .punctuationCharacters)
+            shuffledWords = correctSentence.components(separatedBy: " ").shuffled()
+            userSentence = []
+        }
     }
 
     func checkSentence() {
         let user = userSentence.joined(separator: " ")
         if user + "." == correctSentence + "." {
+            currentSentenceIndex += 1
             showNext = true
         }
     }
 }
-
 
 struct WrapWordsView: View {
     let words: [String]
@@ -138,6 +157,7 @@ struct WrapWordsView: View {
         }
     }
 }
+
 #Preview {
     SentenceGameScreen()
 }
