@@ -24,6 +24,8 @@ struct SentenceGameScreen: View {
 
             Text("Составь предложение")
                 .font(.title)
+                .transition(.opacity.combined(with: .slide))
+                .animation(.easeInOut(duration: 0.4), value: userSentence)
 
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 10)
@@ -43,6 +45,8 @@ struct SentenceGameScreen: View {
                                     .padding(.vertical, 5)
                                     .background(Color.green.opacity(0.3))
                                     .cornerRadius(8)
+                                    .transition(.scale.combined(with: .opacity))
+                                    .animation(.spring(), value: userSentence)
                             }
                         }.padding()
                     }
@@ -52,8 +56,10 @@ struct SentenceGameScreen: View {
 
             HStack {
                 Button("Очистить") {
-                    shuffledWords += userSentence
-                    userSentence.removeAll()
+                    withAnimation {
+                        shuffledWords += userSentence
+                        userSentence.removeAll()
+                    }
                 }
                 .padding()
                 .background(Color.red.opacity(0.2))
@@ -70,8 +76,10 @@ struct SentenceGameScreen: View {
             Spacer()
 
             WrapWordsView(words: shuffledWords, onWordTap: { word in
-                userSentence.append(word)
-                shuffledWords.removeAll { $0 == word }
+                withAnimation(.spring()) {
+                    userSentence.append(word)
+                    shuffledWords.removeAll { $0 == word }
+                }
             })
             .padding()
         }
@@ -106,6 +114,7 @@ struct SentenceGameScreen: View {
     }
 }
 
+
 struct WrapWordsView: View {
     let words: [String]
     let onWordTap: (String) -> Void
@@ -122,14 +131,13 @@ struct WrapWordsView: View {
                         .onTapGesture {
                             onWordTap(word)
                         }
+                        .transition(.scale)
+                        .animation(.spring(), value: words)
                 }
             }
         }
     }
 }
-
-
-
 #Preview {
     SentenceGameScreen()
 }
