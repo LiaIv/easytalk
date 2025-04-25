@@ -15,6 +15,8 @@ struct SentenceGameScreen: View {
     @State private var showNext: Bool = false
     @Environment(\.dismiss) private var dismiss
 
+    @State private var progressColors: [Color] = Array(repeating: .gray, count: 10)
+
     let beginnerSentences = [
         "I have a cat.",
         "She is my sister.",
@@ -25,11 +27,23 @@ struct SentenceGameScreen: View {
         "I am happy today.",
         "My name is Anna.",
         "They are good friends.",
-        "I live in Moscow."
+        "I like this movie."
     ]
 
     var body: some View {
         VStack(spacing: 20) {
+            
+            HStack(spacing: 10) {
+                ForEach(0..<10, id: \.self) { index in
+                    Circle()
+                        .fill(progressColors[index])
+                        .frame(width: 20, height: 20)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                        )
+                }
+            }
 
             Text("Составь предложение")
                 .font(.title)
@@ -122,9 +136,9 @@ struct SentenceGameScreen: View {
 
     func checkSentence() {
         let user = userSentence.joined(separator: " ")
-        if user + "." == correctSentence + "." {
-            showNext = true
-        }
+        let isCorrect = (user + "." == correctSentence + ".")
+        progressColors[currentIndex] = isCorrect ? .green : .red
+        showNext = true
     }
 }
 
@@ -152,6 +166,7 @@ struct WrapWordsView: View {
         }
     }
 }
+
 
 #Preview {
     SentenceGameScreen()
