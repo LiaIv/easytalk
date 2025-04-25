@@ -7,7 +7,13 @@
 
 import SwiftUI
 
+enum GameType: Hashable {
+    case sentence
+    case animal
+}
+
 struct GameView: View {
+    @State private var selectedGame: GameType?
     let borderWidth: CGFloat = 6
 
     var body: some View {
@@ -21,16 +27,29 @@ struct GameView: View {
                     Spacer().frame(height: 80)
 
                     // Кнопка "Составь предложение"
-                    NavigationLink(destination: SentenceGameScreen()) {
+                    Button {
+                        selectedGame = .sentence
+                    } label: {
                         GameButton(title: "Составь предложение", borderWidth: borderWidth)
                     }
 
                     // Кнопка "Угадай животное"
-                    NavigationLink(destination: AnimalGuessGameScreen()) {
+                    Button {
+                        selectedGame = .animal
+                    } label: {
                         GameButton(title: "Угадай животное", borderWidth: borderWidth)
                     }
 
                     Spacer()
+                }
+                .padding()
+            }
+            .navigationDestination(for: GameType.self) { game in
+                switch game {
+                case .sentence:
+                    SentenceGameScreen()
+                case .animal:
+                    AnimalGuessGameScreen()
                 }
             }
         }
@@ -59,6 +78,8 @@ struct GameButton: View {
         }
     }
 }
+
+
 
 
 #Preview {
