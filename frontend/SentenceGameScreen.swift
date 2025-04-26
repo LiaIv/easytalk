@@ -144,7 +144,7 @@ struct SentenceGameScreen: View {
 
             Spacer()
 
-            WrapWordsView(words: shuffledWords, onWordTap: { word in
+            WrapWordsView(words: shuffledWords, userSentence: $userSentence, onWordTap: { word in
                 withAnimation(.spring()) {
                     userSentence.append(word)
                     shuffledWords.removeAll { $0 == word }
@@ -190,6 +190,7 @@ struct SentenceGameScreen: View {
 
 struct WrapWordsView: View {
     let words: [String]
+    @Binding var userSentence: [String]  // Передаем userSentence как Binding
     let onWordTap: (String) -> Void
 
     var body: some View {
@@ -202,7 +203,11 @@ struct WrapWordsView: View {
                         .background(Color.blue.opacity(0.2))
                         .cornerRadius(10)
                         .onTapGesture {
-                            onWordTap(word)
+                            if !userSentence.contains(word) {
+                                DispatchQueue.main.async {
+                                    onWordTap(word)
+                                }
+                            }
                         }
                         .transition(.scale)
                         .animation(.spring(), value: words)
