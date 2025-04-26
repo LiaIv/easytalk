@@ -15,36 +15,36 @@ enum GameType: Hashable {
 struct GameView: View {
     @State private var selectedGame: GameType?
     let borderWidth: CGFloat = 6
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Image("backgroundGame")
                     .resizable()
                     .edgesIgnoringSafeArea(.all)
-
+                
                 VStack(spacing: 20) {
                     Spacer().frame(height: 80)
-
+                    
                     // Кнопка "Составь предложение"
                     Button {
                         selectedGame = .sentence
                     } label: {
                         GameButton(title: "Составь предложение", borderWidth: borderWidth)
                     }
-
+                    
                     // Кнопка "Угадай животное"
                     Button {
                         selectedGame = .animal
                     } label: {
                         GameButton(title: "Угадай животное", borderWidth: borderWidth)
                     }
-
+                    
                     Spacer()
                 }
                 .padding()
             }
-            .navigationDestination(for: GameType.self) { game in
+            .navigationDestination(item: $selectedGame) { game in
                 switch game {
                 case .sentence:
                     SentenceGameScreen()
@@ -78,9 +78,6 @@ struct GameButton: View {
         }
     }
 }
-
-
-
 
 #Preview {
     GameView()
