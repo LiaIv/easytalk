@@ -7,6 +7,12 @@
 
 import SwiftUI
 
+enum LanguageLevel {
+    case beginner
+    case preIntermediate
+    case intermediate
+}
+
 struct SentenceGameScreen: View {
     @State private var currentIndex: Int = 0
     @State private var correctSentence: String = ""
@@ -15,10 +21,11 @@ struct SentenceGameScreen: View {
     @State private var showNext: Bool = false
     @State private var message: String = ""
     @Environment(\.dismiss) private var dismiss
-
     @State private var progressColors: [Color] = Array(repeating: .gray, count: 10)
-
-    let beginnerSentences = [
+    
+    @State private var currentLevel: LanguageLevel = .intermediate
+    
+    var beginnerSentences: [String] = [
         "I have a cat.",
         "She is my sister.",
         "This is my book.",
@@ -30,10 +37,46 @@ struct SentenceGameScreen: View {
         "They are good friends.",
         "I like this movie."
     ]
-
+    
+    var preIntermediateSentences: [String] = [
+        "I usually have breakfast at 8 a.m.",
+        "She is reading a book right now.",
+        "We went to the park yesterday.",
+        "They are playing football in the garden.",
+        "He doesn't like spicy food.",
+        "My best friend lives in another city.",
+        "It was very cold last winter.",
+        "I want to buy a new phone.",
+        "We are planning a trip to Italy.",
+        "She can speak three languages."
+    ]
+    
+    var intermediateSentences: [String] = [
+        "If it rains tomorrow, we will stay at home.",
+        "She has been working here for five years.",
+        "I wish I could travel more often.",
+        "They had already left when I arrived.",
+        "You should call him before visiting.",
+        "Although he was tired, he finished the project.",
+        "We might go hiking next weekend.",
+        "The movie was so boring that we left early.",
+        "He promised that he would help me with the homework.",
+        "By the time we got to the station, the train had already departed."
+    ]
+    
+    var selectedSentences: [String] {
+        switch currentLevel {
+        case .beginner:
+            return beginnerSentences
+        case .preIntermediate:
+            return preIntermediateSentences
+        case .intermediate:
+            return intermediateSentences
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 20) {
-            
             HStack(spacing: 10) {
                 ForEach(0..<10, id: \.self) { index in
                     Circle()
@@ -114,10 +157,10 @@ struct SentenceGameScreen: View {
         }
         .alert(isPresented: $showNext) {
             Alert(
-                title: Text(currentIndex + 1 < beginnerSentences.count ? "Следующее предложение." : "Ты завершил игру."),
+                title: Text(currentIndex + 1 < selectedSentences.count ? "Следующее предложение." : "Ты завершил игру."),
                 message: Text(message),
                 dismissButton: .default(Text("OK")) {
-                    if currentIndex + 1 < beginnerSentences.count {
+                    if currentIndex + 1 < selectedSentences.count {
                         currentIndex += 1
                         loadNewSentence()
                     } else {
@@ -127,14 +170,14 @@ struct SentenceGameScreen: View {
             )
         }
     }
-
+    
     func loadNewSentence() {
-        let sentence = beginnerSentences[currentIndex]
+        let sentence = selectedSentences[currentIndex]
         correctSentence = sentence.trimmingCharacters(in: .punctuationCharacters)
         shuffledWords = correctSentence.components(separatedBy: " ").shuffled()
         userSentence = []
     }
-
+    
     func checkSentence() {
         let user = userSentence.joined(separator: " ")
         let isCorrect = (user + "." == correctSentence + ".")
@@ -168,7 +211,7 @@ struct WrapWordsView: View {
     }
 }
 
-
 #Preview {
     SentenceGameScreen()
 }
+
