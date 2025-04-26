@@ -97,15 +97,16 @@ struct SentenceGameScreen: View {
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.gray.opacity(0.2))
-                    .frame(height: 100)
+                    .frame(height: 250)
 
                 if userSentence.isEmpty {
                     Text("Перетащи слова сюда")
                         .foregroundColor(.gray)
                         .padding(.leading)
                 } else {
-                    ScrollView(.horizontal) {
-                        HStack {
+                    VStack(alignment: .leading) {
+                        let columns = [GridItem(.adaptive(minimum: 80))]
+                        LazyVGrid(columns: columns, spacing: 10) {
                             ForEach(userSentence, id: \.self) { word in
                                 Text(word)
                                     .padding(.horizontal, 10)
