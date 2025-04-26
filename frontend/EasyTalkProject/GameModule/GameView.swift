@@ -7,9 +7,11 @@
 
 import SwiftUI
 
-enum GameType: Hashable {
+enum GameType: Hashable, Identifiable {
     case sentence
     case animal
+
+    var id: Self { self }
 }
 
 struct GameView: View {
