@@ -22,6 +22,7 @@ struct SentenceGameScreen: View {
     @State private var message: String = ""
     @Environment(\.dismiss) private var dismiss
     @State private var progressColors: [Color] = Array(repeating: .gray, count: 10)
+    @State private var flashColor: Color? = nil
     
     @State private var currentLevel: LanguageLevel = .intermediate
     
@@ -100,7 +101,7 @@ struct SentenceGameScreen: View {
                     .frame(height: 250)
 
                 if userSentence.isEmpty {
-                    Text("Перетащи слова сюда")
+                    Text("Нажми на слово для добавления")
                         .foregroundColor(.gray)
                         .padding(.leading)
                 } else {
@@ -129,6 +130,7 @@ struct SentenceGameScreen: View {
                         shuffledWords += userSentence
                         userSentence.removeAll()
                     }
+                    
                 }
                 .padding()
                 .background(Color.red.opacity(0.2))
@@ -153,6 +155,7 @@ struct SentenceGameScreen: View {
             .padding()
         }
         .padding()
+        .background(Color(red: 230/255, green: 245/255, blue: 255/255))
         .onAppear {
             loadNewSentence()
         }
@@ -180,8 +183,8 @@ struct SentenceGameScreen: View {
     }
     
     func checkSentence() {
-        let user = userSentence.joined(separator: " ")
-        let isCorrect = (user + "." == correctSentence + ".")
+        let user = userSentence.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        let isCorrect = user == correctSentence
         progressColors[currentIndex] = isCorrect ? .green : .red
         message = isCorrect ? "Верно!" : "Не верно."
         showNext = true
@@ -190,7 +193,7 @@ struct SentenceGameScreen: View {
 
 struct WrapWordsView: View {
     let words: [String]
-    @Binding var userSentence: [String]  // Передаем userSentence как Binding
+    @Binding var userSentence: [String]
     let onWordTap: (String) -> Void
 
     var body: some View {
@@ -200,7 +203,7 @@ struct WrapWordsView: View {
                 ForEach(words, id: \.self) { word in
                     Text(word)
                         .padding()
-                        .background(Color.blue.opacity(0.2))
+                        .background(Color(red: 214/255, green: 228/255, blue: 240/255))
                         .cornerRadius(10)
                         .onTapGesture {
                             if !userSentence.contains(word) {
@@ -211,6 +214,7 @@ struct WrapWordsView: View {
                         }
                         .transition(.scale)
                         .animation(.spring(), value: words)
+
                 }
             }
         }
