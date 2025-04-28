@@ -24,7 +24,7 @@ struct SentenceGameScreen: View {
     @State private var progressColors: [Color] = Array(repeating: .gray, count: 10)
     @State private var flashColor: Color? = nil
     
-    @State private var currentLevel: LanguageLevel = .intermediate
+    @State private var currentLevel: LanguageLevel = .beginner
     
     var beginnerSentences: [String] = [
         "I have a cat.",
@@ -77,85 +77,89 @@ struct SentenceGameScreen: View {
     }
     
     var body: some View {
-        VStack(spacing: 20) {
-            HStack(spacing: 10) {
-                ForEach(0..<10, id: \.self) { index in
-                    Circle()
-                        .fill(progressColors[index])
-                        .frame(width: 20, height: 20)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.black.opacity(0.2), lineWidth: 1)
-                        )
+        ZStack {
+            (flashColor ?? Color(red: 230/255, green: 245/255, blue: 255/255))
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.3), value: flashColor)
+            
+            VStack(spacing: 20) {
+                HStack(spacing: 10) {
+                    ForEach(0..<10, id: \.self) { index in
+                        Circle()
+                            .fill(progressColors[index])
+                            .frame(width: 20, height: 20)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                            )
+                    }
                 }
-            }
 
-            Text("Составь предложение")
-                .font(.title)
-                .transition(.opacity.combined(with: .slide))
-                .animation(.easeInOut(duration: 0.4), value: userSentence)
+                Text("Составь предложение")
+                    .font(.title)
+                    .transition(.opacity.combined(with: .slide))
+                    .animation(.easeInOut(duration: 0.4), value: userSentence)
 
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 250)
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 250)
 
-                if userSentence.isEmpty {
-                    Text("Нажми на слово для добавления")
-                        .foregroundColor(.gray)
-                        .padding(.leading)
-                } else {
-                    VStack(alignment: .leading) {
-                        let columns = [GridItem(.adaptive(minimum: 80))]
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(userSentence, id: \.self) { word in
-                                Text(word)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(Color.green.opacity(0.3))
-                                    .cornerRadius(8)
-                                    .transition(.scale.combined(with: .opacity))
-                                    .animation(.spring(), value: userSentence)
+                    if userSentence.isEmpty {
+                        Text("Нажми на слово для добавления")
+                            .foregroundColor(.gray)
+                            .padding(.leading)
+                    } else {
+                        VStack(alignment: .leading) {
+                            let columns = [GridItem(.adaptive(minimum: 80))]
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(userSentence, id: \.self) { word in
+                                    Text(word)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.green.opacity(0.3))
+                                        .cornerRadius(8)
+                                        .transition(.scale.combined(with: .opacity))
+                                        .animation(.spring(), value: userSentence)
+                                }
                             }
+                            .padding()
                         }
-                        .padding()
                     }
                 }
-            }
-            .padding(.horizontal)
+                .padding(.horizontal)
 
-            HStack {
-                Button("Очистить") {
-                    withAnimation {
-                        shuffledWords += userSentence
-                        userSentence.removeAll()
+                HStack {
+                    Button("Очистить") {
+                        withAnimation {
+                            shuffledWords += userSentence
+                            userSentence.removeAll()
+                        }
                     }
-                    
-                }
-                .padding()
-                .background(Color.red.opacity(0.2))
-                .cornerRadius(10)
+                    .padding()
+                    .background(Color.red.opacity(0.2))
+                    .cornerRadius(10)
 
-                Button("Готово") {
-                    checkSentence()
+                    Button("Готово") {
+                        checkSentence()
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.2))
+                    .cornerRadius(10)
                 }
+
+                Spacer()
+
+                WrapWordsView(words: shuffledWords, userSentence: $userSentence, onWordTap: { word in
+                    withAnimation(.spring()) {
+                        userSentence.append(word)
+                        shuffledWords.removeAll { $0 == word }
+                    }
+                })
                 .padding()
-                .background(Color.blue.opacity(0.2))
-                .cornerRadius(10)
             }
-
-            Spacer()
-
-            WrapWordsView(words: shuffledWords, userSentence: $userSentence, onWordTap: { word in
-                withAnimation(.spring()) {
-                    userSentence.append(word)
-                    shuffledWords.removeAll { $0 == word }
-                }
-            })
             .padding()
         }
-        .padding()
-        .background(Color(red: 230/255, green: 245/255, blue: 255/255))
         .onAppear {
             loadNewSentence()
         }
@@ -187,6 +191,13 @@ struct SentenceGameScreen: View {
         let isCorrect = user == correctSentence
         progressColors[currentIndex] = isCorrect ? .green : .red
         message = isCorrect ? "Верно!" : "Не верно."
+        
+        // Эффект мигания
+        flashColor = isCorrect ? Color.green.opacity(0.3) : Color.red.opacity(0.3)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            flashColor = nil
+        }
+        
         showNext = true
     }
 }
@@ -214,12 +225,12 @@ struct WrapWordsView: View {
                         }
                         .transition(.scale)
                         .animation(.spring(), value: words)
-
                 }
             }
         }
     }
 }
+
 
 #Preview {
     SentenceGameScreen()
