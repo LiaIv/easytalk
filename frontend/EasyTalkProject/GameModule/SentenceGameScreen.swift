@@ -1,10 +1,3 @@
-//
-//  SentenceGameScreen.swift
-//  EasyTalkProject
-//
-//  Created by Степан Прохоренко on 14.04.2025.
-//
-
 import SwiftUI
 
 enum LanguageLevel {
@@ -150,12 +143,17 @@ struct SentenceGameScreen: View {
 
                 Spacer()
 
-                WrapWordsView(words: shuffledWords, userSentence: $userSentence, onWordTap: { word in
-                    withAnimation(.spring()) {
-                        userSentence.append(word)
-                        shuffledWords.removeAll { $0 == word }
+                // ✅ Вызов внешнего компонента
+                WrapWordsView(
+                    words: shuffledWords,
+                    userSentence: $userSentence,
+                    onWordTap: { word in
+                        withAnimation(.spring()) {
+                            userSentence.append(word)
+                            shuffledWords.removeAll { $0 == word }
+                        }
                     }
-                })
+                )
                 .padding()
             }
             .padding()
@@ -192,7 +190,6 @@ struct SentenceGameScreen: View {
         progressColors[currentIndex] = isCorrect ? .green : .red
         message = isCorrect ? "Верно!" : "Не верно."
         
-        // Эффект мигания
         flashColor = isCorrect ? Color.green.opacity(0.3) : Color.red.opacity(0.3)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             flashColor = nil
@@ -202,37 +199,6 @@ struct SentenceGameScreen: View {
     }
 }
 
-struct WrapWordsView: View {
-    let words: [String]
-    @Binding var userSentence: [String]
-    let onWordTap: (String) -> Void
-
-    var body: some View {
-        VStack {
-            let columns = [GridItem(.adaptive(minimum: 80))]
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(words, id: \.self) { word in
-                    Text(word)
-                        .padding()
-                        .background(Color(red: 214/255, green: 228/255, blue: 240/255))
-                        .cornerRadius(10)
-                        .onTapGesture {
-                            if !userSentence.contains(word) {
-                                DispatchQueue.main.async {
-                                    onWordTap(word)
-                                }
-                            }
-                        }
-                        .transition(.scale)
-                        .animation(.spring(), value: words)
-                }
-            }
-        }
-    }
-}
-
-
 #Preview {
     SentenceGameScreen()
 }
-

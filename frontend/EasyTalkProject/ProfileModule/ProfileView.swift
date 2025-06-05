@@ -28,6 +28,7 @@ struct ProfileView: View {
 
     @State private var showExitAppConfirmation = false
     @State private var achievementsNotAvailable: Bool = true // когда достижения будут реализованы
+    @State private var showingLoginView = false
     
     let userNameKey = "userNameKey"
     let userImageKey = "userImageKey"
@@ -152,7 +153,17 @@ struct ProfileView: View {
                 .alert("Выйти из приложения?", isPresented: $showExitAppConfirmation) {
                     Button("Отмена", role: .cancel) {}
                     Button("Да, выйти", role: .destructive) {
-                        exit(0)
+                        // Очищаем данные сессии
+                        UserDefaults.standard.removeObject(forKey: userNameKey)
+                        UserDefaults.standard.removeObject(forKey: userImageKey)
+                        UserDefaults.standard.removeObject(forKey: userLevelKey)
+                        UserDefaults.standard.removeObject(forKey: "englishLevel")
+                        
+                        // Сбрасываем статус авторизации
+                        UserDefaults.setLoggedIn(value: false)
+                        
+                        // Переход на экран авторизации
+                        showingLoginView = true
                     }
                 }
                 
@@ -164,6 +175,9 @@ struct ProfileView: View {
                     .resizable()
                     .ignoresSafeArea()
             )
+            .fullScreenCover(isPresented: $showingLoginView) {
+                AuthView()
+            }
             .onAppear {
                 // Загрузка имени
                 if let savedName = UserDefaults.standard.string(forKey: userNameKey) {
