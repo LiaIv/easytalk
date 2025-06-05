@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 enum GameType: Hashable, Identifiable {
     case sentence
@@ -16,7 +17,15 @@ enum GameType: Hashable, Identifiable {
 
 struct GameView: View {
     @State private var selectedGame: GameType?
+    @Binding var hideTabBar: Bool
+    @Environment(\.presentationMode) var presentationMode
+    
     let borderWidth: CGFloat = 6
+    
+    // Инициализатор по умолчанию для случаев, когда binding не передается
+    init(hideTabBar: Binding<Bool>? = nil) {
+        self._hideTabBar = hideTabBar ?? .constant(false)
+    }
     
     var body: some View {
         NavigationStack {
@@ -49,9 +58,13 @@ struct GameView: View {
             .navigationDestination(item: $selectedGame) { game in
                 switch game {
                 case .sentence:
+                    // Свойство для скрытия TabBar при переходе на экран игры
                     SentenceGameScreen()
+                        .hideTabBar() // Используем наш новый модификатор
                 case .animal:
+                    // Скрываем TabBar также и для игры с животными
                     AnimalGuessGameScreen()
+                        .hideTabBar() // Используем наш новый модификатор
                 }
             }
         }

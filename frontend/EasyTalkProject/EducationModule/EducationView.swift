@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct EducationView: View {
     let topics = [
@@ -36,10 +37,12 @@ struct EducationView: View {
                             NavigationLink(destination: PerfectInfoView()) {
                                 topicButton(topic)
                             }
-                        } else {
-                            Button(action: {
-                                print("Пока переход не реализован для: \(topic)")
-                            }) {
+                        } else if topic == "Группа Continuous" {
+                            NavigationLink(destination: ContinuousInfoView()) {
+                                topicButton(topic)
+                            }
+                        } else if topic == "Группа Perfect Continuous" {
+                            NavigationLink(destination: PerfectContinuousInfoView()) {
                                 topicButton(topic)
                             }
                         }
@@ -63,6 +66,8 @@ struct EducationView: View {
             .padding(.horizontal, 20)
     }
 }
+
+
 
 #Preview {
     EducationView()
