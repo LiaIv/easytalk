@@ -10,6 +10,16 @@ from repositories.achievement_repository import AchievementRepository
 class TestAchievementRepository:
     """Тесты для репозитория достижений пользователей"""
 
+    @pytest.fixture(autouse=True)
+    def clear_achievements_collection(self, firestore_client):
+        """Очищает коллекцию achievements перед каждым тестом"""
+        collection_ref = firestore_client.collection("achievements")
+        docs = collection_ref.stream()
+        for doc in docs:
+            doc.reference.delete()
+        yield # Тест выполняется здесь
+        # Очистка после теста (если необходимо, но обычно yield достаточно)
+
     @pytest.fixture
     def achievement_repository(self):
         """Инициализируем репозиторий для тестов"""
