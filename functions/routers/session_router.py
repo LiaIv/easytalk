@@ -105,6 +105,8 @@ async def get_active_session(uid: str = Depends(get_current_user_id)):
                 detail="No active session found"
             )
         return session
+    except HTTPException:
+        raise
     except Exception as e:
         # В реальном приложении здесь стоит логировать ошибку 'e'
         raise HTTPException(

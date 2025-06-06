@@ -27,14 +27,22 @@ async def get_profile(uid: str = Depends(get_current_user_id)):
     Получить профиль текущего пользователя.
     Требуется токен авторизации.
     """
-    # Получаем профиль из репозитория
-    user = await user_repository.get_user(uid)
-    
-    # Если пользователь не найден, создаем базовую запись
-    if not user:
-        user = UserModel(uid=uid)
-        
-    return user
+    try:
+        user = await user_repository.get_user(uid)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        # В реальном приложении здесь стоит логировать ошибку 'e'
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user profile: {str(e)}"
+        )
 
 
 @router.put("", response_model=UserModel)
@@ -46,25 +54,41 @@ async def update_profile(
     Обновить профиль текущего пользователя.
     Требуется токен авторизации.
     """
-    # Получаем текущий профиль
-    current_user = await user_repository.get_user(uid)
-    
-    # Если пользователь не найден, создаем базовую запись
-    if not current_user:
-        current_user = UserModel(uid=uid)
-    
-    # Обновляем только предоставленные поля
-    update_dict = update_data.model_dump(exclude_unset=True)
-    
-    # Создаем обновленную модель
-    updated_user = UserModel(
-        uid=uid,
-        email=update_dict.get("email", current_user.email),
-        display_name=update_dict.get("display_name", current_user.display_name),
-        photo_url=update_dict.get("photo_url", current_user.photo_url)
-    )
-    
-    # Сохраняем в репозиторий
-    await user_repository.create_or_update_user(updated_user)
-    
-    return updated_user
+    try:
+        current_user = await user_repository.get_user(uid)
+        update_dict = update_data.model_dump(exclude_unset=True)
+
+        if not current_user:
+            if "email" not in update_dict:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=[{"loc": ["body", "email"], "msg": "Field required for new user profile", "type": "missing"}]
+                )
+            updated_user_data = {
+                "uid": uid,
+                "email": update_dict.get("email"),
+                "display_name": update_dict.get("display_name"),
+                "photo_url": update_dict.get("photo_url"),
+            }
+        else:
+            updated_user_data = {
+                "uid": uid,
+                "email": update_dict.get("email", current_user.email),
+                "display_name": update_dict.get("display_name", current_user.display_name),
+                "photo_url": update_dict.get("photo_url", current_user.photo_url),
+                "level": current_user.level,
+                "created_at": current_user.created_at
+            }
+        
+        updated_user = UserModel(**updated_user_data)
+        
+        await user_repository.create_or_update_user(updated_user)
+        return updated_user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update profile: {str(e)}"
+        )
