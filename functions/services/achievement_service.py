@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from repositories.achievement_repository import AchievementRepository
 from repositories.progress_repository import ProgressRepository
-from domain.achievement import AchievementModel
+from domain.achievement import AchievementModel, AchievementType
 import uuid
 
 class AchievementService:
@@ -25,7 +25,7 @@ class AchievementService:
                 achievement = AchievementModel(
                     achievement_id=ach_id,
                     user_id=user_id,
-                    type="weekly_fifty",
+                    type=AchievementType.WEEKLY_FIFTY,
                     earned_at=datetime.utcnow(),
                     period_start_date=week_start
                 )

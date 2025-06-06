@@ -16,6 +16,7 @@ class AchievementModel(BaseModel):
     type: AchievementType
     earned_at: datetime
     session_id: str | None = None  # Опционально: ID сессии, в которой было получено достижение
+    period_start_date: date | None = None  # Начало периода для еженедельных достижений (weekly_fifty)
 
     model_config = {
         "from_attributes": True,

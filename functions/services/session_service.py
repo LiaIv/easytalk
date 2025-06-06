@@ -2,10 +2,10 @@
 
 import uuid
 from datetime import datetime
-from domain.session import SessionModel, RoundDetail
+from domain.session import SessionModel, RoundDetail, SessionStatus
 from repositories.session_repository import SessionRepository
 from repositories.achievement_repository import AchievementRepository
-from domain.achievement import AchievementModel
+from domain.achievement import AchievementModel, AchievementType
 
 class SessionService:
     def __init__(
@@ -22,7 +22,10 @@ class SessionService:
             session_id=session_id,
             user_id=user_id,
             game_type=game_type,
-            started_at=datetime.utcnow()
+            start_time=datetime.utcnow(),
+            status=SessionStatus.ACTIVE,
+            score=0,
+            details=[]
         )
         self._session_repo.create_session(session)
         return session_id
@@ -34,8 +37,8 @@ class SessionService:
         details: list[RoundDetail],
         score: int
     ) -> None:
-        ended_at = datetime.utcnow()
-        self._session_repo.update_session(session_id, details, ended_at, score)
+        end_time = datetime.utcnow()
+        self._session_repo.update_session(session_id, details, end_time, score)
 
         # Правило «10 правильных подряд»
         if all(detail.is_correct for detail in details):
@@ -43,8 +46,8 @@ class SessionService:
             achievement = AchievementModel(
                 achievement_id=ach_id,
                 user_id=user_id,
-                type="perfect_streak",
+                type=AchievementType.PERFECT_STREAK,
                 earned_at=datetime.utcnow(),
-                period_start_date=None
+                session_id=session_id
             )
             self._achievement_repo.create_achievement(achievement)

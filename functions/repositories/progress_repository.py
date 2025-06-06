@@ -15,9 +15,8 @@ class ProgressRepository:
         """
         # Формируем уникальный ID документа: "<user_id>_<YYYY-MM-DD>"
         doc_id = f"{record.user_id}_{record.date.isoformat()}"
-        data = record.dict()
-        # Конвертируем поле date (type: date) в строку
-        data["date"] = data["date"].isoformat()
+        data = record.model_dump(mode="json")
+        # В mode="json" date уже преобразуется в строку автоматически
         self._collection.document(doc_id).set(data)
 
     def sum_scores_for_week(self, user_id: str, week_ago: datetime) -> int:
@@ -35,5 +34,5 @@ class ProgressRepository:
         total = 0
         for doc in query.stream():
             data = doc.to_dict()
-            total += data.get("daily_score", 0)
+            total += data.get("score", 0)
         return total
