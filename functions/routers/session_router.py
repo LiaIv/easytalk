@@ -1,73 +1,113 @@
 # functions/routers/session_router.py
-from flask import Blueprint, request, jsonify
-from domain.session import RoundDetail # Убедитесь, что модель RoundDetail импортируется правильно
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel, conint
+from typing import List, Optional
 
-def create_session_blueprint(auth_service, session_service):
-    session_bp = Blueprint('session_router', __name__)
+from domain.session import RoundDetail, SessionModel
+from services.session_service import SessionService
+from repositories.session_repository import SessionRepository
+from repositories.achievement_repository import AchievementRepository
+from shared.auth import get_current_user_id
 
-    @session_bp.route("/start_session", methods=["POST"])
-    def start_session_handler():
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
-        try:
-            uid = auth_service.verify_token(token)
-        except Exception as e:
-            # В реальном приложении здесь стоит логировать ошибку 'e'
-            return jsonify({"error": "Unauthorized", "message": str(e)}), 401
+# Инициализируем репозитории
+session_repo = SessionRepository()
+achievement_repo = AchievementRepository()
 
-        data = request.get_json(silent=True) or {}
-        game_type = data.get("gameType")
-        if game_type not in ("guess_animal", "build_sentence"):
-            return jsonify({"error": "Invalid gameType"}), 422
+# Инициализируем сервис сессий, передавая необходимые репозитории
+session_service = SessionService(session_repo, achievement_repo)
 
-        try:
-            session_id = session_service.start_session(uid, game_type)
-            return jsonify({"sessionId": session_id}), 200
-        except Exception as e:
-            # В реальном приложении здесь стоит логировать ошибку 'e'
-            return jsonify({"error": "Failed to start session", "message": str(e)}), 500
+# Создаем роутер для сессий
+router = APIRouter(prefix="/session", tags=["session"])
 
-    @session_bp.route("/finish_session", methods=["PATCH"])
-    def finish_session_handler():
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
-        try:
-            uid = auth_service.verify_token(token)
-        except Exception as e:
-            # В реальном приложении здесь стоит логировать ошибку 'e'
-            return jsonify({"error": "Unauthorized", "message": str(e)}), 401
+# Модель для запроса начала сессии
+class StartSessionRequest(BaseModel):
+    game_type: str  # Тип игры: "guess_animal" или "build_sentence"
 
-        session_id = request.args.get("sessionId")
-        if not session_id:
-            return jsonify({"error": "Missing sessionId"}), 422
+# Модель для ответа о начале сессии
+class StartSessionResponse(BaseModel):
+    session_id: str
 
-        data = request.get_json(silent=True) or {}
-        details_raw = data.get("details")
-        score = data.get("score")
+# Модель для данных завершения сессии
+class FinishSessionRequest(BaseModel):
+    details: List[RoundDetail]
+    score: int
 
-        if not isinstance(details_raw, list):
-            # Можно добавить более конкретную проверку, если требуется (например, на длину списка)
-            return jsonify({"error": "Details must be a list"}), 422
-        
-        parsed_details = []
-        try:
-            for detail_data in details_raw:
-                # Используем RoundDetail(**detail_data) для Pydantic моделей
-                # Убедитесь, что RoundDetail может быть инициализирован таким образом
-                parsed_details.append(RoundDetail(**detail_data))
-        except TypeError as te: # Если **detail_data не подходит для RoundDetail
-             return jsonify({"error": f"Invalid format in round details: {str(te)}"}), 422
-        except Exception as e: # Другие возможные ошибки при парсинге
-            return jsonify({"error": f"Error parsing round details: {str(e)}"}), 422
+# Модель для ответа о завершении сессии
+class FinishSessionResponse(BaseModel):
+    message: str
 
-        if not isinstance(score, int):
-            return jsonify({"error": "Score must be an integer"}), 422
 
-        try:
-            session_service.finish_session(uid, session_id, parsed_details, score)
-            return jsonify({"message": "Session finished successfully"}), 200
-        except ValueError as e: # Например, если сессия не найдена в session_service
-            return jsonify({"error": str(e)}), 404 
-        except Exception as e:
-            # В реальном приложении здесь стоит логировать ошибку 'e'
-            return jsonify({"error": "Failed to finish session", "message": str(e)}), 500
-            
-    return session_bp
+@router.post("/start", response_model=StartSessionResponse)
+async def start_session(request: StartSessionRequest, uid: str = Depends(get_current_user_id)):
+    """
+    Начать новую игровую сессию заданного типа.
+    Требуется токен авторизации.
+    """
+    # Проверяем тип игры
+    if request.game_type not in ("guess_animal", "build_sentence"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid gameType. Must be 'guess_animal' or 'build_sentence'."
+        )
+    
+    try:
+        # Создаем сессию через сервис
+        session_id = await session_service.start_session(uid, request.game_type)
+        return StartSessionResponse(session_id=session_id)
+    except Exception as e:
+        # В реальном приложении здесь стоит логировать ошибку 'e'
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start session: {str(e)}"
+        )
+
+
+@router.patch("/finish", response_model=FinishSessionResponse)
+async def finish_session(
+    request: FinishSessionRequest,
+    session_id: str = Query(..., description="ID сессии для завершения"),
+    uid: str = Depends(get_current_user_id)
+):
+    """
+    Завершить игровую сессию с результатами и получить подтверждение.
+    Требуется токен авторизации.
+    """
+    try:
+        # Завершаем сессию через сервис
+        await session_service.finish_session(uid, session_id, request.details, request.score)
+        return FinishSessionResponse(message="Session finished successfully")
+    except ValueError as e:
+        # Если сессия не найдена
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        # В реальном приложении здесь стоит логировать ошибку 'e'
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to finish session: {str(e)}"
+        )
+
+
+@router.get("/active", response_model=SessionModel)
+async def get_active_session(uid: str = Depends(get_current_user_id)):
+    """
+    Получить данные об активной сессии пользователя, если такая существует.
+    Требуется токен авторизации.
+    """
+    try:
+        # Получаем активную сессию через сервис
+        session = await session_service.get_active_session(uid)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active session found"
+            )
+        return session
+    except Exception as e:
+        # В реальном приложении здесь стоит логировать ошибку 'e'
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get active session: {str(e)}"
+        )

@@ -1,53 +1,56 @@
-# functions/main.py
-from flask import Flask, jsonify
+# functions/main.py (FastAPI version)
+import os
+import uvicorn
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 
-# Импорт сервисов и репозиториев для централизованной инициализации
-from services.auth_service import AuthService
-from services.session_service import SessionService
-from repositories.session_repository import SessionRepository
-from repositories.achievement_repository import AchievementRepository
+# Импорт инфраструктурных компонентов
+from shared.firebase_client import initialize_firebase
 
-# Импорт фабрики Blueprint из вашего роутера
-from routers.session_router import create_session_blueprint
+# Импорт роутеров
+from routers.profile_router import router as profile_router
+from routers.session_router import router as session_router
+from routers.progress_router import router as progress_router
+from routers.content_router import router as content_router
 
-app = Flask(__name__)
+# --- Инициализация Firebase Admin SDK ---
+initialize_firebase()
 
-# --- Инициализация зависимостей --- 
-# Создаем экземпляры сервисов и репозиториев один раз
-auth_service_instance = AuthService()
-session_repository_instance = SessionRepository()
-achievement_repository_instance = AchievementRepository()
-session_service_instance = SessionService(session_repository_instance, achievement_repository_instance)
+# --- Создание FastAPI приложения ---
+app = FastAPI(
+    title="EasyTalk API",
+    description="API сервер для детского образовательного приложения EasyTalk",
+    version="1.0.0"
+)
 
-# --- Регистрация Blueprints --- 
-# Создаем и регистрируем session_blueprint, передавая ему нужные сервисы
-# url_prefix='/' означает, что маршруты из blueprint будут доступны от корня приложения
-# (например, /start_session, /finish_session)
-session_bp = create_session_blueprint(auth_service_instance, session_service_instance)
-app.register_blueprint(session_bp, url_prefix='/')
+# --- Настройка CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # В продакшене лучше указать конкретные домены
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --- Глобальные обработчики ошибок (опционально, но рекомендуется) ---
-@app.errorhandler(401)
-def unauthorized_error(error):
-    return jsonify({"error": "Unauthorized", "message": str(error)}), 401
+# --- Подключение роутеров ---
+app.include_router(profile_router, prefix="/api")
+app.include_router(session_router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
+app.include_router(content_router, prefix="/api")
 
-@app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({"error": "Not Found", "message": str(error)}), 404
 
-@app.errorhandler(422)
-def unprocessable_entity_error(error):
-    # Flask не вызывает этот обработчик для ошибок, возвращенных как tuple, 
-    # но его можно использовать для кастомных исключений, если вы их определите.
-    return jsonify({"error": "Unprocessable Entity", "message": str(error)}), 422
-
-@app.errorhandler(500)
-def internal_server_error(error):
-    # Здесь хорошо бы логировать ошибку error
-    return jsonify({"error": "Internal Server Error", "message": str(error)}), 500
-
-# --- Точка входа для локального запуска (не используется Gunicorn/Waitress) ---
-if __name__ == '__main__':
-    # Переменные окружения FLASK_APP, FLASK_ENV, DEBUG предпочтительнее для `flask run`
-    # Этот блок для запуска через `python main.py`
-    app.run(host='0.0.0.0', port=8080, debug=True)
+@app.get("/")
+async def root():
+    """Корневой эндпоинт для проверки работоспособности API."""
+    return {
+        "message": "EasyTalk API работает",
+        "docs": "/docs",
+        "status": "ok"
+    }
+# --- Запуск локального сервера ---
+if __name__ == "__main__":
+    # Для запуска локально: python main.py
+    # Или можно использовать: uvicorn main:app --reload --host 0.0.0.0 --port 8080
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), reload=True)
+    print("\n FastAPI сервер запущен на http://localhost:8080")
+    print("\n Документация API доступна по адресу http://localhost:8080/docs")

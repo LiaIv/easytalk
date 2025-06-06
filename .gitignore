@@ -2,6 +2,7 @@
 .DS_Store
 .idea/
 .vscode/
+.windsurf/
 # Игнорировать пользовательские файлы Xcode
 *.xcuserstate
 *.xcworkspace
