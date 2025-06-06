@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-from shared.auth import get_current_user_id
-from domain.user import UserModel
-from repositories.user_repository import UserRepository
+from ..shared.auth import get_current_user_id
+from ..domain.user import UserModel
+from ..repositories.user_repository import UserRepository
 
 # Инициализируем репозиторий пользователей
 user_repository = UserRepository()

@@ -1,7 +1,7 @@
 # functions/repositories/progress_repository.py
 
-from shared.config import firestore_client
-from domain.progress import ProgressRecord
+from ..shared.config import firestore_client
+from ..domain.progress import ProgressRecord
 from datetime import date, datetime
 from typing import List
 from google.cloud.firestore_v1.base_query import FieldFilter

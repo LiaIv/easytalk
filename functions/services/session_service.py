@@ -2,10 +2,10 @@
 
 import uuid
 from datetime import datetime, timezone
-from domain.session import SessionModel, RoundDetail, SessionStatus
-from repositories.session_repository import SessionRepository
-from repositories.achievement_repository import AchievementRepository
-from domain.achievement import AchievementModel, AchievementType
+from ..domain.session import SessionModel, RoundDetail, SessionStatus
+from ..repositories.session_repository import SessionRepository
+from ..repositories.achievement_repository import AchievementRepository
+from ..domain.achievement import AchievementModel, AchievementType
 
 class SessionService:
     def __init__(

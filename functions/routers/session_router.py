@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, conint
 from typing import List, Optional
 
-from domain.session import RoundDetail, SessionModel
-from services.session_service import SessionService
-from repositories.session_repository import SessionRepository
-from repositories.achievement_repository import AchievementRepository
-from shared.auth import get_current_user_id
+from ..domain.session import RoundDetail, SessionModel
+from ..services.session_service import SessionService
+from ..repositories.session_repository import SessionRepository
+from ..repositories.achievement_repository import AchievementRepository
+from ..shared.auth import get_current_user_id
 
 # Инициализируем репозитории
 session_repo = SessionRepository()

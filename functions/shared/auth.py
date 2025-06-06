@@ -5,7 +5,7 @@ import firebase_admin.auth
 from firebase_admin import auth
 from typing import Dict, Optional
 
-from services.auth_service import AuthService
+from ..services.auth_service import AuthService
 
 # Инициализируем сервис аутентификации
 auth_service_instance = AuthService()

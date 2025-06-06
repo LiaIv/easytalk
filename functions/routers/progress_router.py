@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import date, datetime, timedelta
 
-from domain.progress import ProgressRecord
-from services.progress_service import ProgressService
-from shared.auth import get_current_user_id
-from shared.utils import to_iso_datetime, from_iso_datetime
+from ..domain.progress import ProgressRecord
+from ..services.progress_service import ProgressService
+from ..shared.auth import get_current_user_id
+from ..shared.utils import to_iso_datetime, from_iso_datetime
 
 # Инициализируем сервис прогресса
 progress_service = ProgressService()

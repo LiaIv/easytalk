@@ -5,13 +5,13 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 # Импорт инфраструктурных компонентов
-from shared.firebase_client import initialize_firebase
+from .shared.firebase_client import initialize_firebase
 
 # Импорт роутеров
-from routers.profile_router import router as profile_router
-from routers.session_router import router as session_router
-from routers.progress_router import router as progress_router
-from routers.content_router import router as content_router
+from .routers.profile_router import router as profile_router
+from .routers.session_router import router as session_router
+from .routers.progress_router import router as progress_router
+from .routers.content_router import router as content_router
 
 # --- Инициализация Firebase Admin SDK ---
 initialize_firebase()

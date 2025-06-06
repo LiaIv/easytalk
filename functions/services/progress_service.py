@@ -2,8 +2,8 @@
 
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Any, Optional
-from repositories.progress_repository import ProgressRepository
-from domain.progress import ProgressRecord
+from ..repositories.progress_repository import ProgressRepository
+from ..domain.progress import ProgressRecord
 
 
 class ProgressService:

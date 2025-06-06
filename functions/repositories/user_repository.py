@@ -1,7 +1,7 @@
 # functions/repositories/user_repository.py
 
-from shared.config import firestore_client
-from domain.user import UserModel
+from ..shared.config import firestore_client
+from ..domain.user import UserModel
 
 class UserRepository:
     def __init__(self):

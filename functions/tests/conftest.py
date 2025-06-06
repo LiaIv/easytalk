@@ -4,7 +4,7 @@ import pytest
 from firebase_admin import initialize_app, delete_app, get_app
 from firebase_admin import firestore
 
-from shared.firebase_client import get_firestore
+from functions.shared.firebase_client import get_firestore
 
 # Настраиваем переменные окружения для тестов
 os.environ['FIRESTORE_EMULATOR_HOST'] = 'localhost:9090'
@@ -83,7 +83,7 @@ def mock_auth_header():
 
 
 from fastapi.testclient import TestClient
-from main import app # Убедитесь, что путь к app правильный
+from functions.main import app # Убедитесь, что путь к app правильный
 
 @pytest.fixture(scope="module")
 def client():

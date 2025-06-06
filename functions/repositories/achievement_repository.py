@@ -1,7 +1,7 @@
 # functions/repositories/achievement_repository.py
 
-from shared.config import firestore_client
-from domain.achievement import AchievementModel
+from ..shared.config import firestore_client
+from ..domain.achievement import AchievementModel
 from datetime import date
 from typing import Optional
 from google.cloud.firestore_v1.base_query import FieldFilter
