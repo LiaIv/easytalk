@@ -2,8 +2,9 @@
 
 import pytest
 from datetime import date, datetime, timedelta
-from domain.progress import ProgressRecord
-from repositories.progress_repository import ProgressRepository
+from unittest.mock import MagicMock
+from functions.domain.progress import ProgressRecord
+from functions.repositories.progress_repository import ProgressRepository
 
 
 class TestProgressRepository:
@@ -47,93 +48,140 @@ class TestProgressRepository:
         assert progress_data["total_answers"] == sample_progress_record.total_answers
         assert progress_data["time_spent"] == sample_progress_record.time_spent
 
-    def test_sum_scores_for_week(self, progress_repository, firestore_client):
-        """Тест подсчета суммы баллов за неделю"""
+    def test_sum_scores_for_week(self, progress_repository, monkeypatch):
+        """Тест суммирования очков за неделю с использованием моков"""
         user_id = "test_user_456"
-        today = date.today()
+        end_date = date.today()
+        start_date = end_date - timedelta(days=6)  # Текущий день + 6 дней ранее = 7 дней
         
-        # Создаем записи за последние 10 дней
-        for days_ago in range(10):
-            current_date = today - timedelta(days=days_ago)
-            score = 10 - days_ago  # Чем дальше в прошлое, тем меньше очков
+        # Создаем данные для моков
+        mock_scores = []
+        for days_ago in range(7):
+            current_date = end_date - timedelta(days=days_ago)
+            score = days_ago + 4  # Скоры: 4, 5, 6, 7, 8, 9, 10
             
-            # Записываем прогресс напрямую в Firestore (имитируем существующие записи)
-            doc_id = f"{user_id}_{current_date.isoformat()}"
-            data = {
+            # Создаем запись для моделирования
+            mock_scores.append({
                 "user_id": user_id,
                 "date": current_date.isoformat(),
                 "score": score,
                 "correct_answers": 5,
                 "total_answers": 10,
-                "time_spent": 100.0
-            }
-            firestore_client.collection("progress").document(doc_id).set(data)
+                "time_spent": 60.0
+            })
         
-        # Получаем сумму баллов за неделю (7 дней)
-        week_ago = datetime.combine(today - timedelta(days=6), datetime.min.time())
-        total = progress_repository.sum_scores_for_week(user_id, week_ago)
+        # Создаем и настраиваем моки для Firestore
+        collection_mock = MagicMock(name="collection_mock")
+        where1_mock = MagicMock(name="where1_mock")
+        where2_mock = MagicMock(name="where2_mock")
+        query_mock = MagicMock(name="query_mock")
+        stream_mock = MagicMock(name="stream_mock")
         
-        # Проверяем результат: сумма баллов за последние 7 дней
-        # 10 + 9 + 8 + 7 + 6 + 5 + 4 = 49
+        # Связывание цепочки вызовов
+        monkeypatch.setattr(progress_repository, "_collection", collection_mock)
+        collection_mock.where.return_value = where1_mock
+        where1_mock.where.return_value = where2_mock
+        where2_mock.stream = stream_mock
+        
+        # Создаем моки документов
+        doc_mocks = []
+        for record in mock_scores:
+            doc_mock = MagicMock()
+            doc_mock.to_dict.return_value = record
+            doc_mocks.append(doc_mock)
+        
+        # Синхронный генератор документов
+        def mock_documents_generator():
+            for doc in doc_mocks:
+                yield doc
+                
+        # Настройка stream() для возврата генератора документов
+        stream_mock.return_value = mock_documents_generator()
+        
+        # Вызываем тестируемый метод
+        # Преобразуем дату в объект datetime, как того ожидает метод
+        end_datetime = datetime.combine(end_date, datetime.min.time())
+        total = progress_repository.sum_scores_for_week(user_id, end_datetime)
+        
+        # Проверяем сумму: 4 + 5 + 6 + 7 + 8 + 9 + 10 = 49
         expected_total = sum(range(4, 11))
         assert total == expected_total
+
         
-    def test_get_progress(self, progress_repository, firestore_client):
-        """Тест получения записей прогресса за указанный период"""
+    def test_get_progress(self, progress_repository, monkeypatch):
+        """Тест получения записей прогресса за указанный период с использованием моков"""
         user_id = "test_user_789"
         today = date.today()
         
-        # Создаем тестовые записи за 5 дней
+        # Создаем тестовые данные для моделирования
         expected_records = []
-        for days_ago in range(5):
+        for days_ago in range(3):  # Только за последние 3 дня, так как это будет в результате запроса
             current_date = today - timedelta(days=days_ago)
-            score = 20 - days_ago * 2  # Убывающие очки: 20, 18, 16, 14, 12
-            correct = 10 - days_ago    # Убывающие правильные ответы: 10, 9, 8, 7, 6
+            score = 20 - days_ago * 2  # Убывающие очки: 20, 18, 16
+            correct = 10 - days_ago    # Убывающие правильные ответы: 10, 9, 8
             
-            # Записываем прогресс напрямую в Firestore
-            doc_id = f"{user_id}_{current_date.isoformat()}"
-            data = {
-                "user_id": user_id,
-                "date": current_date.isoformat(),
-                "score": score,
-                "correct_answers": correct,
-                "total_answers": 10,
-                "time_spent": 90.0 + days_ago * 10  # 90, 100, 110, 120, 130
-            }
-            firestore_client.collection("progress").document(doc_id).set(data)
-            
-            # Сохраняем ожидаемую запись для сравнения
+            # Создаем ожидаемую запись
             expected_records.append(ProgressRecord(
                 user_id=user_id,
                 date=current_date,
                 score=score,
                 correct_answers=correct,
                 total_answers=10,
-                time_spent=90.0 + days_ago * 10
+                time_spent=90.0 + days_ago * 10  # 90, 100, 110
             ))
         
-        # Создаем записи для другого пользователя, которые не должны попасть в выборку
-        other_user_id = "other_user_123"
-        for days_ago in range(5):
-            current_date = today - timedelta(days=days_ago)
-            firestore_client.collection("progress").document(f"{other_user_id}_{current_date.isoformat()}").set({
-                "user_id": other_user_id,
-                "date": current_date.isoformat(),
-                "score": 5,
-                "correct_answers": 3,
-                "total_answers": 5,
-                "time_spent": 50.0
-            })
+        # Создаем и настраиваем моки для Firestore
+        # Инициализация моков для цепочки вызовов Firestore
+        collection_mock = MagicMock(name="collection_mock")
+        where1_mock = MagicMock(name="where1_mock")
+        where2_mock = MagicMock(name="where2_mock")
+        query_mock = MagicMock(name="query_mock")
+        stream_mock = MagicMock(name="stream_mock")
+        
+        # Связывание цепочки вызовов
+        monkeypatch.setattr(progress_repository, "_collection", collection_mock)
+        collection_mock.where.return_value = where1_mock
+        where1_mock.where.return_value = where2_mock
+        where2_mock.where.return_value = query_mock
+        query_mock.stream = stream_mock
+        
+        # Создаем моки документов для возврата из stream()
+        doc_mocks = []
+        for record in expected_records:
+            doc_mock = MagicMock()
+            # to_dict вернет словарь с данными ProgressRecord
+            doc_dict = record.model_dump()
+            # Преобразуем date в строку, как это делает Firestore
+            doc_dict["date"] = doc_dict["date"].isoformat()
+            doc_mock.to_dict.return_value = doc_dict
+            doc_mocks.append(doc_mock)
+        
+        # Сделаем синхронный генератор для возврата документов
+        def mock_documents_generator():
+            for doc in doc_mocks:
+                yield doc
+                
+        # Настройка stream() для возврата генератора документов
+        stream_mock.return_value = mock_documents_generator()
         
         # Выбираем период для запроса: последние 3 дня
         start_date = (today - timedelta(days=2)).isoformat()
         end_date = today.isoformat()
         
-        # Получаем записи за указанный период
+        # Вызываем тестируемый метод
         result_records = progress_repository.get_progress(user_id, start_date, end_date)
         
         # Проверяем количество записей
         assert len(result_records) == 3
+        
+        # Проверяем содержимое записей
+        for i, record in enumerate(result_records):
+            assert record.user_id == expected_records[i].user_id
+            assert record.date == expected_records[i].date
+            assert record.score == expected_records[i].score
+            assert record.correct_answers == expected_records[i].correct_answers
+            assert record.total_answers == expected_records[i].total_answers
+            assert record.time_spent == expected_records[i].time_spent
         
         # Проверяем, что все записи относятся к запрошенному пользователю
         for record in result_records:

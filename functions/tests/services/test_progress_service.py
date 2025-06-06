@@ -5,9 +5,9 @@ from unittest.mock import Mock, patch
 from datetime import date, datetime, timedelta
 from typing import List
 
-from domain.progress import ProgressRecord
-from repositories.progress_repository import ProgressRepository
-from services.progress_service import ProgressService
+from functions.domain.progress import ProgressRecord
+from functions.repositories.progress_repository import ProgressRepository
+from functions.services.progress_service import ProgressService
 
 
 class TestProgressService:
@@ -99,7 +99,7 @@ class TestProgressService:
         score = 75
         
         # Выполняем метод без указания даты
-        with patch('services.progress_service.date') as mock_date:
+        with patch('functions.services.progress_service.date') as mock_date:
             today = date(2025, 6, 6)
             mock_date.today.return_value = today
             
@@ -129,7 +129,7 @@ class TestProgressService:
         progress_repository_mock.get_progress.return_value = sample_records_list
         
         # Патчим метод date.today() для стабильности теста
-        with patch('services.progress_service.date') as mock_date:
+        with patch('functions.services.progress_service.date') as mock_date:
             mock_date.today.return_value = today
             
             # Выполняем тестируемый метод

@@ -4,10 +4,10 @@ import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, date, timedelta
 
-from repositories.achievement_repository import AchievementRepository
-from repositories.progress_repository import ProgressRepository
-from services.achievement_service import AchievementService
-from domain.achievement import AchievementModel, AchievementType
+from functions.repositories.achievement_repository import AchievementRepository
+from functions.repositories.progress_repository import ProgressRepository
+from functions.services.achievement_service import AchievementService
+from functions.domain.achievement import AchievementModel, AchievementType
 
 
 class TestAchievementService:

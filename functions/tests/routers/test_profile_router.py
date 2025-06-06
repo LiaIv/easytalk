@@ -4,18 +4,18 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime, timezone
 
-from domain.user import UserModel
-from routers.profile_router import UpdateProfileRequest # Импортируем из роутера, т.к. там определена
-from repositories.user_repository import UserRepository # Для мокирования
+from functions.domain.user import UserModel
+from functions.routers.profile_router import UpdateProfileRequest # Импортируем из роутера, т.к. там определена
+from functions.repositories.user_repository import UserRepository # Для мокирования
 
 # Путь к экземпляру user_repository в модуле profile_router
-USER_REPOSITORY_PATH = "routers.profile_router.user_repository"
+USER_REPOSITORY_PATH = "functions.routers.profile_router.user_repository"
 TEST_USER_ID = "test_profile_user_123"
 
 # Фикстура для клиента с переопределенной авторизацией
 @pytest.fixture
 def client_with_auth_override(client: TestClient):
-    from shared.auth import get_current_user_id
+    from functions.shared.auth import get_current_user_id
     async def override_get_current_user_id():
         return TEST_USER_ID
     client.app.dependency_overrides[get_current_user_id] = override_get_current_user_id

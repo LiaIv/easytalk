@@ -5,11 +5,11 @@ from datetime import datetime
 import uuid
 from unittest.mock import Mock, patch
 
-from domain.session import SessionModel, RoundDetail, SessionStatus
-from domain.achievement import AchievementModel, AchievementType
-from repositories.session_repository import SessionRepository
-from repositories.achievement_repository import AchievementRepository
-from services.session_service import SessionService
+from functions.domain.session import SessionModel, RoundDetail, SessionStatus
+from functions.domain.achievement import AchievementModel, AchievementType
+from functions.repositories.session_repository import SessionRepository
+from functions.repositories.achievement_repository import AchievementRepository
+from functions.services.session_service import SessionService
 
 
 class TestSessionService:

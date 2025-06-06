@@ -4,23 +4,23 @@ from unittest.mock import MagicMock, AsyncMock
 from typing import List
 from datetime import datetime, timezone # Добавим timezone для offset-aware datetime
 
-from routers.session_router import (
+from functions.routers.session_router import (
     StartSessionRequest,
     StartSessionResponse,
     FinishSessionRequest,
     FinishSessionResponse
 )
-from domain.session import SessionModel, RoundDetail, SessionStatus # Импортируем SessionStatus
-from services.session_service import SessionService # Для мокирования
+from functions.domain.session import SessionModel, RoundDetail, SessionStatus # Импортируем SessionStatus
+from functions.services.session_service import SessionService # Для мокирования
 
 # Путь к экземпляру session_service в модуле session_router
-SESSION_SERVICE_PATH = "routers.session_router.session_service"
+SESSION_SERVICE_PATH = "functions.routers.session_router.session_service"
 TEST_USER_ID = "test_user_123"
 
 # Фикстура для клиента с переопределенной авторизацией (аналогично test_progress_router)
 @pytest.fixture
 def client_with_auth_override(client: TestClient):
-    from shared.auth import get_current_user_id
+    from functions.shared.auth import get_current_user_id
     async def override_get_current_user_id():
         return TEST_USER_ID
     client.app.dependency_overrides[get_current_user_id] = override_get_current_user_id
