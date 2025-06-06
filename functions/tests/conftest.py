@@ -7,7 +7,7 @@ from firebase_admin import firestore
 from shared.firebase_client import get_firestore
 
 # Настраиваем переменные окружения для тестов
-os.environ['FIRESTORE_EMULATOR_HOST'] = 'localhost:8080'
+os.environ['FIRESTORE_EMULATOR_HOST'] = 'localhost:9090'
 os.environ['FIREBASE_AUTH_EMULATOR_HOST'] = 'localhost:9099'
 os.environ['DEBUG'] = 'True'
 

@@ -217,3 +217,26 @@ pytest
 
 - GitHub: [ваш_github_аккаунт]
 - Email: [ваш_email_адрес]
+
+## Прочиее заметки
+
+### В корне проекта
+
+cd /Users/ruzaliia/Apps/easytalk/functions
+
+### Активируем виртуальное окружение
+
+### Устанавливаем зависимости
+
+pip install -r requirements.txt
+
+### Экспортируем переменные для эмуляторов
+
+export FIRESTORE_EMULATOR_HOST=localhost:8080
+export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+export GOOGLE_APPLICATION_CREDENTIALS="./shared/serviceAccountKey.json"
+export DEBUG=True
+
+### Запускаем FastAPI локально
+
+uvicorn main:app --reload --port 8080

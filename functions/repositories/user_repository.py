@@ -8,7 +8,8 @@ class UserRepository:
         self._collection = firestore_client.collection("users")
 
     def create_user(self, user: UserModel) -> None:
-        self._collection.document(user.uid).set(user.dict())
+        # Используем model_dump с параметром mode="json", который превращает объекты в JSON-совместимые значения
+        self._collection.document(user.uid).set(user.model_dump(mode="json"))
 
     def get_user(self, uid: str) -> UserModel | None:
         doc = self._collection.document(uid).get()
@@ -17,7 +18,8 @@ class UserRepository:
         return None
 
     def update_user(self, user: UserModel) -> None:
-        data = user.dict(exclude={"created_at"})
+        # Исключаем created_at из обновления и преобразуем в JSON-совместимый формат
+        data = user.model_dump(mode="json", exclude={"created_at"})
         self._collection.document(user.uid).update(data)
 
     def delete_user(self, uid: str) -> None:

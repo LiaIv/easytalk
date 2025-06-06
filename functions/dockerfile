@@ -1,15 +1,23 @@
-# 1. Базовый образ с Python
+# functions/Dockerfile
+
+# 1) Берём официальный облегчённый образ Python 3.13
 FROM python:3.13-slim
 
-# 2. Рабочая директория
+# 2) Устанавливаем рабочую директорию
 WORKDIR /app
 
-# 3. Копируем requirements.txt и устанавливаем зависимости
+# 3) Копируем файл зависимостей и устанавливаем их
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Копируем весь код
+# 4) Копируем весь код приложения
 COPY . .
 
-# 5. Задаём команду запуска FastAPI (uvicorn)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# 5) Экспортируем переменные окружения для эмуляторов (можно переопределить снаружи)
+ENV FIRESTORE_EMULATOR_HOST=localhost:9090
+ENV FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/shared/serviceAccountKey.json
+ENV DEBUG=True
+
+# 6) Запускаем FastAPI с помощью uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9090"]
