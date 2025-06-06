@@ -3,6 +3,7 @@
 .idea/
 .vscode/
 .windsurf/
+.pytest_cache/
 memory-bank/
 
 # Логи и секретные ключи
