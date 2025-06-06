@@ -1,0 +1,21 @@
+# Core dependencies for Firebase and FastAPI
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.0.0
+email-validator>=2.0.0  # для поддержки EmailStr в pydantic
+
+# Firebase and Google Cloud
+firebase-admin>=6.0.0
+google-cloud-firestore>=2.0.0
+
+# Utils and configuration
+python-dotenv>=1.0.0  # для работы с .env файлами
+pytz>=2023.0  # для работы с таймзонами
+
+# Legacy (для обратной совместимости)
+functions-framework>=3.0.0  # для совместимости с Cloud Functions
+
+# Development and testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0  # для асинхронного тестирования FastAPI

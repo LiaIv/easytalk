@@ -2,6 +2,16 @@
 .DS_Store
 .idea/
 .vscode/
+.windsurf/
+.pytest_cache/
+memory-bank/
+
+# Логи и секретные ключи
+*.log
+functions/firestore-debug.log
+functions/shared/serviceAccountKey.json
+functions/firebase-debug.log
+*-debug.log
 # Игнорировать пользовательские файлы Xcode
 *.xcuserstate
 *.xcworkspace
