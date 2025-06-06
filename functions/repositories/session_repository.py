@@ -21,9 +21,9 @@ class SessionRepository:
         (поле session_id используем только как ID документа, но не записываем его в сам документ)
         """
         # Берём словарь из pydantic-модели,
-        # но явно исключаем session_id, ended_at, score и details,
-        # чтобы в Firestore хранились только user_id, game_type, started_at
-        data = session.dict(exclude={"session_id", "ended_at", "score", "details"})
+        # но явно исключаем session_id, end_time, score и details,
+        # чтобы в Firestore хранились только user_id, game_type, start_time, status
+        data = session.model_dump(mode="json", exclude={"session_id", "end_time", "score", "details"})
         self._collection.document(session.session_id).set(data)
 
     def update_session(
@@ -42,8 +42,8 @@ class SessionRepository:
         batch: WriteBatch = firestore_client.batch()
         doc_ref = self._collection.document(session_id)
         batch.update(doc_ref, {
-            "details": [d.dict() for d in details],
-            "ended_at": ended_at,
+            "details": [d.model_dump(mode="json") for d in details],
+            "ended_at": ended_at.isoformat(),  # Преобразуем datetime в ISO строку
             "score": score
         })
         batch.commit()
