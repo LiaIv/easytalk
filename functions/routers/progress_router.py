@@ -135,3 +135,24 @@ async def get_progress(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get progress data: {str(e)}"
         )
+
+
+# Модель для ответа недельной сводки
+class WeeklySummaryResponse(BaseModel):
+    total_weekly_score: int
+
+@router.get("/weekly-summary", response_model=WeeklySummaryResponse)
+async def get_weekly_summary(uid: str = Depends(get_current_user_id)):
+    """
+    Получить общее количество очков пользователя за последнюю неделю.
+    Требуется токен авторизации.
+    """
+    try:
+        total_score = progress_service.get_weekly_summary(user_id=uid)
+        return WeeklySummaryResponse(total_weekly_score=total_score)
+    except Exception as e:
+        # В реальном приложении здесь стоит логировать ошибку 'e'
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get weekly summary: {str(e)}"
+        )

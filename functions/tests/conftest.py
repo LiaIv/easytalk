@@ -80,3 +80,15 @@ def mock_auth_header():
     Фикстура, возвращающая заголовок авторизации для тестов
     """
     return {"Authorization": f"Bearer TEST_TOKEN"}
+
+
+from fastapi.testclient import TestClient
+from main import app # Убедитесь, что путь к app правильный
+
+@pytest.fixture(scope="module")
+def client():
+    """
+    Фикстура для предоставления TestClient для FastAPI приложения.
+    """
+    with TestClient(app) as c:
+        yield c
