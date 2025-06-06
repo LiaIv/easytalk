@@ -1,6 +1,6 @@
 # functions/services/achievement_service.py
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from repositories.achievement_repository import AchievementRepository
 from repositories.progress_repository import ProgressRepository
 from domain.achievement import AchievementModel, AchievementType
@@ -16,7 +16,7 @@ class AchievementService:
         self._progress_repo = progress_repo
 
     def check_weekly_achievement(self, user_id: str) -> None:
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         total = self._progress_repo.sum_scores_for_week(user_id, week_ago)
         if total >= 50:
             week_start = week_ago.date()
@@ -26,7 +26,7 @@ class AchievementService:
                     achievement_id=ach_id,
                     user_id=user_id,
                     type=AchievementType.WEEKLY_FIFTY,
-                    earned_at=datetime.utcnow(),
+                    earned_at=datetime.now(timezone.utc),
                     period_start_date=week_start
                 )
                 self._achievement_repo.create_achievement(achievement)

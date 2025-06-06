@@ -4,6 +4,7 @@ from shared.config import firestore_client
 from domain.achievement import AchievementModel
 from datetime import date
 from typing import Optional
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 class AchievementRepository:
     def __init__(self):
@@ -19,7 +20,7 @@ class AchievementRepository:
         self._collection.document(achievement.achievement_id).set(data)
 
     def get_user_achievements(self, user_id: str) -> list[AchievementModel]:
-        docs = self._collection.where("user_id", "==", user_id).stream()
+        docs = self._collection.where(filter=FieldFilter("user_id", "==", user_id)).stream()
         results = []
         for doc in docs:
             obj = doc.to_dict()
@@ -36,9 +37,9 @@ class AchievementRepository:
         period_str = period_start.isoformat()
         docs = (
             self._collection
-            .where("user_id", "==", user_id)
-            .where("type", "==", "weekly_fifty")
-            .where("period_start_date", "==", period_str)
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("type", "==", "weekly_fifty"))
+            .where(filter=FieldFilter("period_start_date", "==", period_str))
             .stream()
         )
         return any(True for _ in docs)
@@ -50,9 +51,9 @@ class AchievementRepository:
         period_str = period_start.isoformat()
         docs_query = (
             self._collection
-            .where("user_id", "==", user_id)
-            .where("type", "==", "weekly_fifty")
-            .where("period_start_date", "==", period_str)
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("type", "==", "weekly_fifty"))
+            .where(filter=FieldFilter("period_start_date", "==", period_str))
         )
         
         docs_to_delete = list(docs_query.stream())

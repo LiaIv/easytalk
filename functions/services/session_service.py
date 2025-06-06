@@ -1,7 +1,7 @@
 # functions/services/session_service.py
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from domain.session import SessionModel, RoundDetail, SessionStatus
 from repositories.session_repository import SessionRepository
 from repositories.achievement_repository import AchievementRepository
@@ -22,7 +22,7 @@ class SessionService:
             session_id=session_id,
             user_id=user_id,
             game_type=game_type,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             status=SessionStatus.ACTIVE,
             score=0,
             details=[]
@@ -37,7 +37,7 @@ class SessionService:
         details: list[RoundDetail],
         score: int
     ) -> None:
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         self._session_repo.update_session(session_id, details, end_time, score)
 
         # Правило «10 правильных подряд»
@@ -47,7 +47,7 @@ class SessionService:
                 achievement_id=ach_id,
                 user_id=user_id,
                 type=AchievementType.PERFECT_STREAK,
-                earned_at=datetime.utcnow(),
+                earned_at=datetime.now(timezone.utc),
                 session_id=session_id
             )
             self._achievement_repo.create_achievement(achievement)

@@ -4,7 +4,7 @@ import firebase_admin
 from firebase_admin import auth
 from domain.user import UserModel
 from repositories.user_repository import UserRepository
-from datetime import datetime
+from datetime import datetime, timezone
 
 class AuthService:
     def __init__(self):
@@ -22,7 +22,7 @@ class AuthService:
             display_name=display_name,
             avatar_url=None,
             level=level,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self._user_repo.create_user(user)
         return user

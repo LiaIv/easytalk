@@ -4,6 +4,7 @@ from shared.config import firestore_client
 from domain.progress import ProgressRecord
 from datetime import date, datetime
 from typing import List
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 class ProgressRepository:
     def __init__(self):
@@ -29,8 +30,8 @@ class ProgressRepository:
         week_str = week_ago.date().isoformat()
         query = (
             self._collection
-            .where("user_id", "==", user_id)
-            .where("date", ">=", week_str)
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("date", ">=", week_str))
         )
         total = 0
         for doc in query.stream():
@@ -52,9 +53,9 @@ class ProgressRepository:
         """
         query = (
             self._collection
-            .where("user_id", "==", user_id)
-            .where("date", ">=", start_date)
-            .where("date", "<=", end_date)
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("date", ">=", start_date))
+            .where(filter=FieldFilter("date", "<=", end_date))
         )
         
         progress_records = []

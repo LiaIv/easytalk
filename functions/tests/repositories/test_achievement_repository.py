@@ -3,6 +3,7 @@
 import pytest
 from datetime import date, datetime, timezone, timedelta
 import uuid
+from google.cloud.firestore_v1.base_query import FieldFilter
 from domain.achievement import AchievementModel, AchievementType
 from repositories.achievement_repository import AchievementRepository
 
@@ -156,9 +157,9 @@ class TestAchievementRepository:
         # Проверяем, что достижения были созданы
         query = (
             firestore_client.collection("achievements")
-            .where("user_id", "==", user_id)
-            .where("type", "==", "weekly_fifty")
-            .where("period_start_date", "==", period_start.isoformat())
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("type", "==", "weekly_fifty"))
+            .where(filter=FieldFilter("period_start_date", "==", period_start.isoformat()))
         )
         docs = list(query.stream())
         assert len(docs) == 3
