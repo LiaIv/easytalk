@@ -6,19 +6,22 @@ from typing import List, Dict, Any, Optional
 from datetime import date, datetime, timedelta
 
 from domain.progress import ProgressRecord
-from repositories.progress_repository import ProgressRepository
+from services.progress_service import ProgressService
 from shared.auth import get_current_user_id
 from shared.utils import to_iso_datetime, from_iso_datetime
 
-# Инициализируем репозиторий прогресса
-progress_repository = ProgressRepository()
+# Инициализируем сервис прогресса
+progress_service = ProgressService()
 
 # Создаем роутер для прогресса
 router = APIRouter(prefix="/progress", tags=["progress"])
 
 # Модель для запроса сохранения прогресса
 class SaveProgressRequest(BaseModel):
-    daily_score: int = Field(..., ge=0, description="Количество очков за день")
+    score: int = Field(..., ge=0, description="Количество очков за день")
+    correct_answers: int = Field(..., ge=0, description="Количество правильных ответов")
+    total_answers: int = Field(..., ge=0, description="Общее количество ответов")
+    time_spent: float = Field(..., ge=0.0, description="Время в секундах")
     date: Optional[str] = Field(None, description="Дата в формате ISO (YYYY-MM-DD)")
 
 
@@ -28,11 +31,21 @@ class SaveProgressResponse(BaseModel):
     progress_id: str
 
 
+# Модель ответа с данными о прогрессе
+class ProgressItemResponse(BaseModel):
+    date: str
+    daily_score: int
+    correct_answers: int
+    total_answers: int
+    success_rate: float
+    time_spent: Optional[float] = None
+
 # Модель для данных прогресса
 class ProgressResponse(BaseModel):
-    data: List[Dict[str, Any]]
+    data: List[ProgressItemResponse]
     total_score: int
     average_score: float
+    success_rate: Optional[float] = None
 
 
 @router.post("", response_model=SaveProgressResponse)
@@ -44,7 +57,7 @@ async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_cur
     # Проверяем, что очки не отрицательные (уже валидация через Field)
     
     # Если дата не указана, используем текущую
-    progress_date = date.today()
+    progress_date = None
     if request.date:
         try:
             progress_date = datetime.strptime(request.date, "%Y-%m-%d").date()
@@ -55,15 +68,15 @@ async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_cur
             )
     
     try:
-        # Создаем запись о прогрессе
-        progress_record = ProgressRecord(
+        # Используем сервис для сохранения прогресса
+        progress_id = progress_service.record_progress(
             user_id=uid,
-            date=progress_date.isoformat(),
-            daily_score=request.daily_score
+            score=request.score,
+            correct_answers=request.correct_answers,
+            total_answers=request.total_answers,
+            time_spent=request.time_spent,
+            record_date=progress_date
         )
-        
-        # Сохраняем в репозиторий
-        progress_id = await progress_repository.save_progress(progress_record)
         
         return SaveProgressResponse(
             message="Progress saved successfully",
@@ -87,42 +100,34 @@ async def get_progress(
     Требуется токен авторизации.
     """
     try:
-        # Рассчитываем дату начала периода
-        end_date = date.today()
-        start_date = end_date - timedelta(days=days-1)  # -1 т.к. включаем текущий день
+        # Используем сервис для получения прогресса
+        progress_data = progress_service.get_progress(uid, days)
         
-        # Получаем записи из репозитория
-        progress_records = await progress_repository.get_progress(
-            uid, 
-            start_date.isoformat(), 
-            end_date.isoformat()
-        )
-        
-        # Если записей нет, возвращаем пустой список
-        if not progress_records:
+        # Если данных нет, возвращаем пустой ответ
+        if not progress_data["data"]:
             return ProgressResponse(
                 data=[],
                 total_score=0,
                 average_score=0.0
             )
         
-        # Конвертируем записи в формат для ответа и рассчитываем статистику
-        data = []
-        total_score = 0
-        
-        for record in progress_records:
-            data.append({
-                "date": record.date,
-                "daily_score": record.daily_score
-            })
-            total_score += record.daily_score
-        
-        average_score = total_score / len(progress_records) if progress_records else 0
+        # Преобразуем данные в ожидаемый формат ответа
+        response_data = []
+        for item in progress_data["data"]:
+            response_data.append(ProgressItemResponse(
+                date=item["date"],
+                daily_score=item["score"],  # Переименовываем score в daily_score для совместимости
+                success_rate=item["success_rate"],
+                correct_answers=item["correct_answers"],
+                total_answers=item["total_answers"],
+                time_spent=item["time_spent"]
+            ))
         
         return ProgressResponse(
-            data=data,
-            total_score=total_score,
-            average_score=round(average_score, 1)
+            data=response_data,
+            total_score=progress_data["total_score"],
+            average_score=progress_data["average_score"],
+            success_rate=progress_data["success_rate"]
         )
     except Exception as e:
         # В реальном приложении здесь стоит логировать ошибку 'e'
