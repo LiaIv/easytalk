@@ -1,7 +1,7 @@
 # functions/repositories/session_repository.py
 
-from ..shared.config import firestore_client
-from ..domain.session import SessionModel, RoundDetail
+from functions.shared.config import firestore_client
+from functions.domain.session import SessionModel, RoundDetail
 from google.cloud.firestore import WriteBatch
 from typing import List
 from datetime import datetime

@@ -3,10 +3,10 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 import datetime # Добавим импорт datetime
 
-from main import app
-from shared.auth import get_current_user_id
+from functions.main import app
+from functions.shared.auth import get_current_user_id
 
-PROGRESS_SERVICE_PATH = "routers.progress_router.progress_service"
+PROGRESS_SERVICE_PATH = "functions.routers.progress_router.progress_service"
 TEST_USER_ID = "test_user_progress_router"
 
 @pytest.fixture

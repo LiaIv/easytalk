@@ -2,8 +2,8 @@
 
 import firebase_admin
 from firebase_admin import auth
-from ..domain.user import UserModel
-from ..repositories.user_repository import UserRepository
+from functions.domain.user import UserModel
+from functions.repositories.user_repository import UserRepository
 from datetime import datetime, timezone
 
 class AuthService:

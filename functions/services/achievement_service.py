@@ -1,9 +1,9 @@
 # functions/services/achievement_service.py
 
 from datetime import datetime, timedelta, timezone
-from ..repositories.achievement_repository import AchievementRepository
-from ..repositories.progress_repository import ProgressRepository
-from ..domain.achievement import AchievementModel, AchievementType
+from functions.repositories.achievement_repository import AchievementRepository
+from functions.repositories.progress_repository import ProgressRepository
+from functions.domain.achievement import AchievementModel, AchievementType
 import uuid
 
 class AchievementService:

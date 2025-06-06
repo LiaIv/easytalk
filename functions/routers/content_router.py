@@ -5,8 +5,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel
 
-from ..shared.auth import get_current_user_id
-from ..shared.firebase_client import get_firestore
+from functions.shared.auth import get_current_user_id
+from functions.shared.firebase_client import get_firestore
 
 # Создаем роутер для контента
 router = APIRouter(prefix="/content", tags=["content"])
