@@ -78,7 +78,7 @@ async def get_animal_by_id(
             .collection("items")
             .document(animal_id)
         )
-        doc = doc_ref.get()
+        doc = await doc_ref.get()
 
         if not doc.exists:
             raise HTTPException(

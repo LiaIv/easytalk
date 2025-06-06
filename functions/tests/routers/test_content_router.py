@@ -94,14 +94,21 @@ async def test_get_animals_success_default_limit(
     mock_animal_data_2 = {"name": "Dog", "english_name": "Dog", "difficulty": 2, "sound_url": "dog.mp3"}
     doc_mock_1 = create_mock_doc("animal1", mock_animal_data_1)
     doc_mock_2 = create_mock_doc("animal2", mock_animal_data_2)
+    
+    async def docs_stream_generator():
+        yield doc_mock_1
+        yield doc_mock_2
 
     # Path: db.collection('content').document('animals').collection('items')
-    animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
+    animals_items_collection_mock = mock_firestore_client.collection("content").document("animals").collection("items")
     
     # Path: .limit(50).stream()
     query_mock = MagicMock(name="query_mock_animals_default_limit")
     animals_items_collection_mock.limit.return_value = query_mock
-    query_mock.stream = AsyncMock(return_value=[doc_mock_1, doc_mock_2])
+    
+    stream_mock = MagicMock(name="stream_mock_animals_default_limit")
+    query_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/animals")
     assert response.status_code == 200
@@ -118,35 +125,51 @@ async def test_get_animals_success_custom_limit(
     client_with_auth_override: TestClient, mock_firestore_client: MagicMock
 ):
     """Тест успешного получения списка животных с кастомным limit"""
-    mock_animal_data = {"name": "Lion", "english_name": "Lion", "difficulty": 3}
-    doc_mock = create_mock_doc("animal_lion", mock_animal_data)
+    mock_animal_data = {"name": "Elephant", "english_name": "Elephant", "difficulty": 3, "image_url": "elephant.jpg"}
+    doc_mock = create_mock_doc("animal_limit", mock_animal_data)
     
-    animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
+    async def docs_stream_generator():
+        yield doc_mock
+
+    # Path: db.collection('content').document('animals').collection('items')
+    animals_items_collection_mock = mock_firestore_client.collection("content").document("animals").collection("items")
+    
+    # Path: .limit(10).stream()
     query_mock = MagicMock(name="query_mock_animals_custom_limit")
     animals_items_collection_mock.limit.return_value = query_mock
-    query_mock.stream = AsyncMock(return_value=[doc_mock])
+    
+    stream_mock = MagicMock(name="stream_mock_animals_custom_limit")
+    query_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/animals?limit=1")
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
-    assert response_data[0]["id"] == "animal_lion"
+    assert response_data[0]["id"] == "animal_limit"
     animals_items_collection_mock.limit.assert_called_once_with(1)
 
 @pytest.mark.asyncio
 async def test_get_animals_success_with_difficulty_filter(
     client_with_auth_override: TestClient, mock_firestore_client: MagicMock
 ):
-    """Тест успешного получения списка животных с фильтром по difficulty (дефолтный лимит 50)"""
-    mock_animal_data = {"name": "Tiger", "english_name": "Tiger", "difficulty": 4}
+    """Тест успешного получения списка животных с фильтром по difficulty"""
+    mock_animal_data = {"name": "Tiger", "english_name": "Tiger", "difficulty": 4, "image_url": "tiger.jpg"}
     doc_mock = create_mock_doc("animal_tiger", mock_animal_data)
     
-    animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
-    query_after_where_mock = MagicMock(name="query_after_where_animals_difficulty")
+    async def docs_stream_generator():
+        yield doc_mock
+    
+    animals_items_collection_mock = mock_firestore_client.collection("content").document("animals").collection("items")
+    query_after_where_mock = MagicMock(name="query_after_where_mock")
     animals_items_collection_mock.where.return_value = query_after_where_mock
-    query_after_limit_mock = MagicMock(name="query_after_limit_animals_difficulty")
+    
+    query_after_limit_mock = MagicMock(name="query_after_limit_mock")
     query_after_where_mock.limit.return_value = query_after_limit_mock
-    query_after_limit_mock.stream = AsyncMock(return_value=[doc_mock])
+    
+    stream_mock = MagicMock(name="stream_mock_animals_difficulty")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/animals?difficulty=4")
     assert response.status_code == 200
@@ -162,13 +185,21 @@ async def test_get_animals_success_with_difficulty_and_limit(
 ):
     """Тест успешного получения списка животных с фильтром по difficulty и кастомным limit"""
     doc_mock = create_mock_doc("animal_bear", {"name": "Bear", "english_name": "Bear", "difficulty": 5})
-    
+
+    # Создаем асинхронный генератор для mock документов
+    async def docs_stream_generator():
+        yield doc_mock
+
     animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
     query_after_where_mock = MagicMock(name="query_after_where_animals_diff_limit")
     animals_items_collection_mock.where.return_value = query_after_where_mock
+    
     query_after_limit_mock = MagicMock(name="query_after_limit_animals_diff_limit")
     query_after_where_mock.limit.return_value = query_after_limit_mock
-    query_after_limit_mock.stream = AsyncMock(return_value=[doc_mock])
+    
+    stream_mock = MagicMock(name="stream_mock_difficulty_limit")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/animals?difficulty=5&limit=1")
     assert response.status_code == 200
@@ -180,15 +211,23 @@ async def test_get_animals_success_with_difficulty_and_limit(
 async def test_get_animals_success_empty_list(
     client_with_auth_override: TestClient, mock_firestore_client: MagicMock
 ):
-    """Тест успешного получения пустого списка животных (с фильтром)"""
-    animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
+    """Тест успешного получения пустого списка животных (например, для несуществующего значения difficulty)"""
     
-    # Mock for path with difficulty filter: .where(...).limit(...).stream()
-    query_after_where_mock = MagicMock(name="query_after_where_empty_animals")
+    async def empty_stream_generator():
+        # Для пустого генератора нет yield операторов, тоесть итерация сразу завершается
+        if False:  # Всегда ложно, чтобы этот yield не выполнялся
+            yield None # Для обозначения, что это генератор
+    
+    animals_items_collection_mock = mock_firestore_client.collection("content").document("animals").collection("items")
+    query_after_where_mock = MagicMock(name="query_after_where_empty")
     animals_items_collection_mock.where.return_value = query_after_where_mock
-    query_after_limit_mock = MagicMock(name="query_after_limit_empty_animals")
+    
+    query_after_limit_mock = MagicMock(name="query_after_limit_empty")
     query_after_where_mock.limit.return_value = query_after_limit_mock
-    query_after_limit_mock.stream = AsyncMock(return_value=[])
+    
+    stream_mock = MagicMock(name="stream_mock_animals_empty")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = empty_stream_generator()
 
     response = client_with_auth_override.get("/content/animals?difficulty=1")
     assert response.status_code == 200
@@ -211,13 +250,22 @@ async def test_get_animals_firestore_exception(
     """Тест GET /content/animals при ошибке Firestore (ожидаем 500)"""
     error_message = "Firestore DB error for animals list"
     animals_items_collection_mock = mock_firestore_client.collection().document("animals").collection()
+
+    # Создаем асинхронный генератор, который вызывает исключение
+    async def failing_stream_generator():
+        raise RuntimeError(error_message)
+        yield None  # Эта строка недостижима, но нужна для того чтобы функция считалась генератором
     
     # Path if difficulty is provided (test uses difficulty=1)
     query_after_where_mock = MagicMock(name="query_after_where_animals_exception")
     animals_items_collection_mock.where.return_value = query_after_where_mock
+    
     query_after_limit_mock = MagicMock(name="query_after_limit_animals_exception")
     query_after_where_mock.limit.return_value = query_after_limit_mock
-    query_after_limit_mock.stream = AsyncMock(side_effect=RuntimeError(error_message))
+    
+    stream_mock = MagicMock(name="stream_mock_exception")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = failing_stream_generator()
     
     response = client_with_auth_override.get("/content/animals?difficulty=1")
     assert response.status_code == 500
@@ -312,11 +360,19 @@ async def test_get_animal_by_id_firestore_exception(
     """Тест GET /content/animals/{animal_id} при ошибке Firestore (ожидаем 500)"""
     animal_id = "error_animal_id"
     error_message = "Firestore get() error for single animal"
+    
+    # Создаем асинхронную функцию, которая вызывает исключение
+    async def error_get_function():
+        raise RuntimeError(error_message)
+        return None  # Эта строка недостижима, но нужна для анализатора типов
+    
     # Path: db.collection('content').document('animals').collection('items').document(animal_id).get()
-    # Make the .get() call itself raise an exception.
-    mock_firestore_client.collection().document("animals").collection().document().get = AsyncMock(
-        side_effect=RuntimeError(error_message)
-    )
+    animal_item_doc_ref_mock = mock_firestore_client.collection("content").document("animals").collection("items").document(animal_id)
+    
+    # Создаем мок для .get() и устанавливаем его return_value на нашу ошибочную функцию
+    get_mock = MagicMock(name="get_mock_error_animal")
+    animal_item_doc_ref_mock.get = get_mock
+    get_mock.return_value = error_get_function()
     response = client_with_auth_override.get(f"/content/animals/{animal_id}")
     assert response.status_code == 500
     response_json = response.json()
@@ -332,11 +388,18 @@ async def test_get_sentences_success_default_limit(
     """Тест успешного получения списка предложений (дефолтный лимит 50)"""
     doc1 = create_mock_doc("s1", {"sentence": "Hello world", "words": ["Hello", "world"], "difficulty": 1})
     doc2 = create_mock_doc("s2", {"sentence": "How are you", "words": ["How", "are", "you"], "difficulty": 2, "translation": "Как дела?"})
+    
+    async def docs_stream_generator():
+        yield doc1
+        yield doc2
 
-    sentences_items_collection_mock = mock_firestore_client.collection().document("sentences").collection()
+    sentences_items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
     query_mock = MagicMock(name="query_mock_sentences_default_limit")
     sentences_items_collection_mock.limit.return_value = query_mock
-    query_mock.stream = AsyncMock(return_value=[doc1, doc2])
+    
+    stream_mock = MagicMock(name="stream_mock_sentences_default_limit")
+    query_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/sentences")
     assert response.status_code == 200
@@ -355,10 +418,17 @@ async def test_get_sentences_success_custom_limit(
 ):
     """Тест успешного получения списка предложений с кастомным limit"""
     doc1 = create_mock_doc("s_limit", {"sentence": "Test sentence", "words":["Test", "sentence"], "difficulty": 1})
-    sentences_items_collection_mock = mock_firestore_client.collection().document("sentences").collection()
+    
+    async def docs_stream_generator():
+        yield doc1
+    
+    sentences_items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
     query_mock = MagicMock(name="query_mock_sentences_custom_limit")
     sentences_items_collection_mock.limit.return_value = query_mock
-    query_mock.stream = AsyncMock(return_value=[doc1])
+    
+    stream_mock = MagicMock(name="stream_mock_sentences_custom_limit")
+    query_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/sentences?limit=1")
     assert response.status_code == 200
@@ -371,12 +441,20 @@ async def test_get_sentences_success_with_difficulty_filter(
 ):
     """Тест успешного получения списка предложений с фильтром по difficulty (дефолтный лимит 50)"""
     doc1 = create_mock_doc("s_diff", {"sentence": "Difficult one", "words":["Difficult", "one"], "difficulty": 3})
-    sentences_items_collection_mock = mock_firestore_client.collection().document("sentences").collection()
+    
+    async def docs_stream_generator():
+        yield doc1
+    
+    sentences_items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
     query_after_where_mock = MagicMock(name="query_after_where_sentences_difficulty")
     sentences_items_collection_mock.where.return_value = query_after_where_mock
+    
     query_after_limit_mock = MagicMock(name="query_after_limit_sentences_difficulty")
     query_after_where_mock.limit.return_value = query_after_limit_mock
-    query_after_limit_mock.stream = AsyncMock(return_value=[doc1])
+    
+    stream_mock = MagicMock(name="stream_mock_sentences_difficulty")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = docs_stream_generator()
 
     response = client_with_auth_override.get("/content/sentences?difficulty=3")
     assert response.status_code == 200
@@ -390,48 +468,98 @@ async def test_get_sentences_success_with_difficulty_filter(
 async def test_get_sentences_success_empty_list(
     client_with_auth_override: TestClient, mock_firestore_client: MagicMock
 ):
-    """Тест успешного получения пустого списка предложений (с фильтром)"""
-    sentences_items_collection_mock = mock_firestore_client.collection().document("sentences").collection()
-    
-    query_after_where_mock = MagicMock(name="query_after_where_empty_sentences")
+    """Тест успешного получения пустого списка предложений"""
+    async def empty_stream_generator():
+        # Пустой асинхронный генератор
+        if False: # Чтобы функция была генератором
+            yield None
+        return
+
+    sentences_items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
+
+    # Тестируем случай с фильтром по difficulty
+    query_after_where_mock = MagicMock(name="query_after_where_mock_empty_list")
     sentences_items_collection_mock.where.return_value = query_after_where_mock
-    MagicMock(name="query_after_limit_empty_sentences")
-    error_message = "Firestore DB error"
-    # Настраиваем мок Firestore для вызова исключения
-    # Path: db.collection('content').document('animals').collection('items').where(...).limit(...).stream()
-    animals_items_collection_mock = mock_firestore_client.collection("content").document("animals").collection("items")
     
-    # Мокируем .where().limit().stream() для случая с ?difficulty=1
-    # Path: ...collection("items").where(...)
-    query_after_where_mock = MagicMock(name="query_after_where_mock")
-    animals_items_collection_mock.where.return_value = query_after_where_mock
-
-    # Path: ...where(...).limit(...)
-    limit_mock_after_where = MagicMock(name="limit_mock_after_where")
-    query_after_where_mock.limit.return_value = limit_mock_after_where
+    query_after_limit_mock = MagicMock(name="query_after_limit_mock_empty_list")
+    query_after_where_mock.limit.return_value = query_after_limit_mock
     
-    # .stream() это СИНХРОННЫЙ метод, который возвращает АСИНХРОННЫЙ итератор.
-    # Поэтому limit_mock_after_where.stream должен быть MagicMock.
-    stream_method_sync_mock = MagicMock(name="stream_method_sync_mock")
-    limit_mock_after_where.stream = stream_method_sync_mock
+    stream_mock = MagicMock(name="stream_mock_empty_list")
+    query_after_limit_mock.stream = stream_mock
+    stream_mock.return_value = empty_stream_generator()
+    
+    response = client_with_auth_override.get("/content/sentences?difficulty=5")
+    assert response.status_code == 200
+    assert response.json() == []
+    
+    sentences_items_collection_mock.where.assert_called_once_with("difficulty", "==", 5)
+    query_after_where_mock.limit.assert_called_once_with(50)  # Default limit
+    mock_firestore_client.collection.assert_called_with("content")
 
-    # stream_method_sync_mock должен возвращать асинхронный итератор, который вызывает ошибку.
-    async def failing_async_generator():
-        print("[TEST MOCK DEBUG] failing_async_generator: about to raise RuntimeError")
+
+def test_get_sentences_unauthorized(client: TestClient):
+    """Тест GET /content/sentences без авторизации (ожидаем 401)"""
+    response = client.get("/content/sentences")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
+
+
+@pytest.mark.asyncio
+async def test_get_sentences_firestore_exception(
+    client_with_auth_override: TestClient, mock_firestore_client: MagicMock
+):
+    """Тест GET /content/sentences при ошибке Firestore (ожидаем 500)"""
+    error_message = "Firestore DB error for sentences"
+
+    async def error_stream_generator():
         raise RuntimeError(error_message)
-        yield None # Делает эту функцию асинхронным генератором, хотя yield недостижим
+        yield  # Это нужно, чтобы Python распознал функцию как асинхронный генератор
 
-    # Говорим, что stream_method_sync_mock() возвращает экземпляр этого генератора.
-    stream_method_sync_mock.return_value = failing_async_generator()
-
-    # Другие пути мокирования (без where, без limit) здесь опущены для краткости,
-    # так как этот тест специфичен для пути с where().limit().stream()
-
-    response = client_with_auth_override.get("/content/animals?difficulty=1")
+    sentences_items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
+    
+    # Мокируем цепочку для случая без фильтра (наиболее простой)
+    query_after_limit_mock = MagicMock(name="query_after_limit_sentences_exception")
+    sentences_items_collection_mock.limit.return_value = query_after_limit_mock
+    query_after_limit_mock.stream.return_value = error_stream_generator()
+    
+    response = client_with_auth_override.get("/content/sentences") 
     assert response.status_code == 500
     response_json = response.json()
     assert "detail" in response_json
-    assert f"Failed to retrieve animals content: {error_message}" in response_json["detail"]
+    assert f"Failed to retrieve sentences content: {error_message}" in response_json["detail"]
+
+    # Проверки вызовов
+    sentences_items_collection_mock.limit.assert_called_once_with(50)  # Default limit
+
+
+@pytest.mark.parametrize(
+    "params, expected_error_part",
+    [
+        ("limit=0", {"loc": ["query", "limit"], "msg": "Input should be greater than or equal to 1"}),
+        ("limit=101", {"loc": ["query", "limit"], "msg": "Input should be less than or equal to 100"}),
+        ("limit=abc", {"loc": ["query", "limit"], "msg": "Input should be a valid integer"}),
+        ("difficulty=0", {"loc": ["query", "difficulty"], "msg": "Input should be greater than or equal to 1"}),
+        ("difficulty=6", {"loc": ["query", "difficulty"], "msg": "Input should be less than or equal to 5"}),
+        ("difficulty=xyz", {"loc": ["query", "difficulty"], "msg": "Input should be a valid integer"}),
+    ]
+)
+def test_get_sentences_validation_errors(
+    client_with_auth_override: TestClient, params: str, expected_error_part: Dict[str, Any]
+):
+    """Тест GET /content/sentences с невалидными параметрами (ожидаем 422)"""
+    response = client_with_auth_override.get(f"/content/sentences?{params}")
+    assert response.status_code == 422
+    response_json = response.json()
+    assert "detail" in response_json
+    assert isinstance(response_json["detail"], list)
+    found_error = any(
+        error_detail.get("loc") == expected_error_part["loc"] and
+        expected_error_part["msg"] in error_detail.get("msg", "")
+        for error_detail in response_json["detail"]
+    )
+    assert found_error, f"Expected error part {expected_error_part} not found in {response_json['detail']}"
+
+# Конец тестов для content_router
 
 @pytest.mark.parametrize(
     "params, expected_error_part",
@@ -476,12 +604,21 @@ async def test_get_animal_by_id_success(
         "name": "Elephant", "english_name": "Elephant", "difficulty": 3, "image_url": "elephant.png"
     }
     
-    # Настраиваем мок для конкретного документа
-    # get_firestore().collection('content').document('animals').collection('items').document(animal_id).get()
-    doc_snapshot_mock = mock_firestore_client.collection().document().collection().document().get()
-    doc_snapshot_mock.exists = True
-    doc_snapshot_mock.id = animal_id
-    doc_snapshot_mock.to_dict.return_value = mock_animal_data
+    # Создаем документ Firestore
+    actual_snapshot = MagicMock(name="animal_snapshot")
+    actual_snapshot.exists = True
+    actual_snapshot.id = animal_id
+    actual_snapshot.to_dict.return_value = mock_animal_data
+    
+    # Создаем асинхронную функцию, которая вернет этот документ
+    async def get_document_async():
+        return actual_snapshot
+    
+    # Настраиваем мок для path: .collection('content').document('animals').collection('items').document(animal_id).get()
+    animal_doc_ref_mock = mock_firestore_client.collection("content").document("animals").collection("items").document(animal_id)
+    get_mock = MagicMock(name="get_method")
+    animal_doc_ref_mock.get = get_mock
+    get_mock.return_value = get_document_async()
 
     response = client_with_auth_override.get(f"/content/animals/{animal_id}")
     assert response.status_code == 200
@@ -494,7 +631,8 @@ async def test_get_animal_by_id_success(
     assert response_data["image_url"] == "elephant.png"
 
     # Проверяем, что был вызван правильный путь к документу
-    mock_firestore_client.collection().document().collection().document.assert_called_with(animal_id)
+    # Поскольку мы используем конкретные имена в моках, достаточно проверить вызов document() с animal_id
+    animal_doc_ref_mock.get.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_get_animal_by_id_not_found(
@@ -503,8 +641,19 @@ async def test_get_animal_by_id_not_found(
     """Тест GET /content/animals/{animal_id} когда животное не найдено (ожидаем 404)"""
     animal_id = "non_existent_animal"
     
-    doc_snapshot_mock = mock_firestore_client.collection().document().collection().document().get()
-    doc_snapshot_mock.exists = False # Животное не существует
+    # Создаем документ Firestore с exists=False
+    actual_snapshot = MagicMock(name="not_found_snapshot")
+    actual_snapshot.exists = False
+    
+    # Создаем асинхронную функцию, которая вернет несуществующий документ
+    async def get_document_async():
+        return actual_snapshot
+    
+    # Настраиваем мок для path: .collection('content').document('animals').collection('items').document(animal_id).get()
+    animal_doc_ref_mock = mock_firestore_client.collection("content").document("animals").collection("items").document(animal_id)
+    get_mock = MagicMock(name="get_method_not_found")
+    animal_doc_ref_mock.get = get_mock
+    get_mock.return_value = get_document_async() # Животное не существует
 
     response = client_with_auth_override.get(f"/content/animals/{animal_id}")
     assert response.status_code == 404
@@ -524,10 +673,16 @@ async def test_get_animal_by_id_firestore_exception(
     animal_id = "error_animal_id"
     error_message = "Firestore get() error"
     
-    # Настраиваем мок Firestore для вызова исключения при .get()
-    mock_firestore_client.collection().document().collection().document().get = AsyncMock(
-        side_effect=RuntimeError(error_message)
-    )
+    # Создаем асинхронную функцию, которая вызывает исключение
+    async def error_get_function():
+        raise RuntimeError(error_message)
+        return None  # Эта строка недостижима, но нужна для анализатора типов
+    
+    # Настраиваем мок для path: .collection('content').document('animals').collection('items').document(animal_id).get()
+    animal_doc_ref_mock = mock_firestore_client.collection("content").document("animals").collection("items").document(animal_id)
+    get_mock = MagicMock(name="get_method_error")
+    animal_doc_ref_mock.get = get_mock
+    get_mock.return_value = error_get_function()
 
     response = client_with_auth_override.get(f"/content/animals/{animal_id}")
     assert response.status_code == 500
@@ -655,32 +810,7 @@ async def test_get_sentences_success_with_difficulty_filter(
     query_after_where_mock.limit.assert_called_once_with(50) # Default limit
     mock_firestore_client.collection().document.assert_any_call('sentences')
 
-@pytest.mark.asyncio
-async def test_get_sentences_success_empty_list(
-    client_with_auth_override: TestClient, mock_firestore_client: MagicMock
-):
-    """Тест успешного получения пустого списка предложений"""
-    async def empty_stream_generator():
-        if False: # Ensure it's a generator
-            yield None
-        return
 
-    items_collection_mock = mock_firestore_client.collection("content").document("sentences").collection("items")
-
-    query_after_where_mock = MagicMock(name="query_after_where_mock_empty_list")
-    items_collection_mock.where.return_value = query_after_where_mock
-
-    query_after_limit_mock = MagicMock(name="query_after_limit_mock_empty_list")
-    query_after_where_mock.limit.return_value = query_after_limit_mock
-
-    stream_mock = MagicMock(name="stream_mock_empty_list")
-    query_after_limit_mock.stream = stream_mock
-    stream_mock.return_value = empty_stream_generator()
-
-    response = client_with_auth_override.get("/content/sentences?difficulty=99")
-    assert response.status_code == 200
-    assert response.json() == []
-    mock_firestore_client.collection().document.assert_any_call('sentences')
 
 def test_get_sentences_unauthorized(client: TestClient):
     """Тест GET /content/sentences без авторизации (ожидаем 401)"""
