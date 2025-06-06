@@ -3,6 +3,7 @@
 from shared.config import firestore_client
 from domain.progress import ProgressRecord
 from datetime import date, datetime
+from typing import List
 
 class ProgressRepository:
     def __init__(self):
@@ -36,3 +37,34 @@ class ProgressRepository:
             data = doc.to_dict()
             total += data.get("score", 0)
         return total
+        
+    def get_progress(self, user_id: str, start_date: str, end_date: str) -> List[ProgressRecord]:
+        """
+        Получает записи прогресса за указанный период.
+        
+        Args:
+            user_id: ID пользователя
+            start_date: Начальная дата в формате ISO (YYYY-MM-DD)
+            end_date: Конечная дата в формате ISO (YYYY-MM-DD)
+            
+        Returns:
+            Список объектов ProgressRecord
+        """
+        query = (
+            self._collection
+            .where("user_id", "==", user_id)
+            .where("date", ">=", start_date)
+            .where("date", "<=", end_date)
+        )
+        
+        progress_records = []
+        for doc in query.stream():
+            data = doc.to_dict()
+            # Конвертируем строку даты обратно в объект date
+            if isinstance(data["date"], str):
+                data["date"] = date.fromisoformat(data["date"])
+            # Создаем объект ProgressRecord из данных Firestore
+            progress_record = ProgressRecord.model_validate(data)
+            progress_records.append(progress_record)
+            
+        return progress_records
