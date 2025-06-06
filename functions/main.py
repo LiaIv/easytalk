@@ -50,7 +50,8 @@ async def root():
 # --- Запуск локального сервера ---
 if __name__ == "__main__":
     # Для запуска локально: python main.py
-    # Или можно использовать: uvicorn main:app --reload --host 0.0.0.0 --port 8080
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), reload=True)
+    # Или можно использовать напрямую: uvicorn main:app --reload --host 0.0.0.0 --port 8080
+    # Для режима перезагрузки (reload) нужно передавать имя модуля в виде строки
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), reload=True)
     print("\n FastAPI сервер запущен на http://localhost:8080")
     print("\n Документация API доступна по адресу http://localhost:8080/docs")
