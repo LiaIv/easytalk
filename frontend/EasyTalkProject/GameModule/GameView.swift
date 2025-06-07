@@ -60,7 +60,7 @@ struct GameView: View {
                 case .sentence:
                     // Свойство для скрытия TabBar при переходе на экран игры
                     SentenceGameScreen()
-                        .hideTabBar() // Используем наш новый модификатор
+                        .hideCustomTabBar() // Используем наш новый модификатор
                 case .animal:
                     // Скрываем TabBar также и для игры с животными
                     AnimalGuessGameScreen()
