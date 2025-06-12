@@ -1,10 +1,3 @@
-//
-//  AuthService.swift
-//  EasyTalkProject
-//
-//  Created by Степан Прохоренко on 29.03.2025.
-//
-
 import Foundation
 import FirebaseAuth
 
