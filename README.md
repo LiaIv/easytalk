@@ -6,7 +6,7 @@ EasyTalk — это образовательное iOS-приложение дл
 
 ## Архитектура проекта
 
-Проект следует принципам чистой архитектуры (Clean Architecture) с четким разделением ответственности:
+Проект следует принципам чистой архитектуры (Clean Architecture) с четким разделением ответственности и упрощенным подходом:
 
 ### Доменный слой (Domain)
 
@@ -99,7 +99,7 @@ EasyTalk — это образовательное iOS-приложение дл
 
    Создайте файл `backend/shared/serviceAccountKey.json` с учетными данными вашего проекта Firebase.
 
-### Запуск сервера для разработки
+### Устаревший способ: Запуск сервера для разработки (см. новый раздел ниже)
 
 1. Сначала установите переменные окружения для подключения к эмуляторам:
 
@@ -124,6 +124,112 @@ EasyTalk — это образовательное iOS-приложение дл
 Документация Swagger UI: `http://localhost:8080/docs`  
 Альтернативная документация ReDoc: `http://localhost:8080/redoc`
 
+## Локальная разработка с эмуляторами Firebase
+
+Для локальной разработки и тестирования бэкенда EasyTalk использует эмуляторы Firebase для Auth и Firestore.
+
+### 1. Настройка переменных окружения (.env)
+
+В директории `backend/` создайте файл `.env` со следующим содержимым. Этот файл будет автоматически загружаться при старте приложения для конфигурации эмуляторов:
+
+```env
+FIRESTORE_EMULATOR_HOST=localhost:9090
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+GCLOUD_PROJECT=easytalk-emulator
+# DEBUG=True # Раскомментируйте для дополнительного вывода отладочной информации
+```
+
+**Важно:** Убедитесь, что порты (`9090` для Firestore, `9099` для Auth) соответствуют тем, что указаны в вашей конфигурации `firebase.json`.
+
+### 2. Запуск эмуляторов Firebase
+
+Перед запуском бэкенд-приложения необходимо запустить эмуляторы Firebase. Выполните команду из **корневой директории проекта** (`/Users/ruzaliia/Apps/easytalk/`):
+
+```bash
+firebase emulators:start
+```
+
+Это запустит локальные версии Firestore, Firebase Auth и других сервисов, если они настроены. Обычно UI эмуляторов доступен по адресу `http://localhost:4000`.
+
+### 3. Запуск FastAPI бэкенда
+
+После запуска эмуляторов, перейдите в директорию `backend/` и запустите FastAPI приложение с помощью Poetry и Uvicorn:
+
+```bash
+cd backend
+poetry run uvicorn main:app --reload
+```
+
+Сервер будет доступен по адресу `http://127.0.0.1:8000` (или `http://localhost:8000`). Документация API (Swagger UI) будет доступна по адресу `http://localhost:8000/docs`.
+
+### 4. Получение Firebase ID Токена для тестирования API
+
+Для доступа к защищенным эндпоинтам API требуется Firebase ID токен, переданный в заголовке `Authorization: Bearer <ID_TOKEN>`.
+
+#### А. Получение токена от ЭМУЛЯТОРА Firebase Auth
+
+Это наиболее удобный способ для локального тестирования с Postman или другими HTTP-клиентами.
+
+1. **Создайте пользователя в эмуляторе Auth:**
+
+  - **Через UI эмулятора:** Откройте `http://localhost:4000` в браузере, перейдите на вкладку "Authentication" и добавьте нового пользователя (например, `test@example.com` с паролем `password123`).
+  - **Через REST API (например, Postman):**
+    - **URL:** `POST http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts?key=ANY_STRING_CAN_BE_USED_AS_KEY_FOR_EMULATOR`
+    - **Тело (JSON):**
+
+      ```json
+      {
+        "email": "test@example.com",
+        "password": "password123",
+        "returnSecureToken": false
+      }
+      ```
+
+1. **Войдите пользователем и получите ID токен (через REST API):**
+
+  - **URL:** `POST http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=ANY_STRING_CAN_BE_USED_AS_KEY_FOR_EMULATOR`
+  - **Тело (JSON):**
+
+    ```json
+        {
+          "email": "test@example.com",
+          "password": "password123",
+          "returnSecureToken": true
+        }
+    ```
+
+  - В ответе на этот запрос будет поле `idToken`. Скопируйте его значение.
+
+1. **Используйте токен:** Вставляйте полученный `idToken` в заголовок `Authorization` ваших запросов к API:
+    `Authorization: Bearer <idToken_полученный_на_шаге_2>`
+
+#### Б. Получение токена от РЕАЛЬНОГО проекта Firebase (через клиентское приложение)
+
+Если вам нужно протестировать взаимодействие с реальным (не эмуляторным) проектом Firebase, токен должен быть сгенерирован клиентским приложением (например, вашим iOS-приложением), которое настроено на работу с этим реальным проектом.
+
+1. Убедитесь, что ваше клиентское приложение (iOS) корректно настроено для работы с вашим продакшн/девелопмент проектом Firebase (правильный `GoogleService-Info.plist`).
+2. Реализуйте в клиентском приложении логику входа пользователя через Firebase Authentication.
+3. После успешного входа пользователя получите его ID токен. Пример для Swift (iOS):
+
+  ```swift
+    import FirebaseAuth
+
+    Auth.auth().currentUser?.getIDTokenResult(forcingRefresh: true) { result, error in
+        if let error = error {
+            print("Error getting ID token: \(error.localizedDescription)")
+            return
+        }
+        guard let token = result?.token else {
+            print("No token found")
+            return
+        }
+        print("Firebase ID Token (for REAL project): \(token)")
+        // Этот токен можно передать на бэкенд или использовать для тестов
+    }
+    ```
+
+    Этот токен затем можно использовать для отправки запросов к вашему API, если оно настроено на работу с тем же реальным проектом Firebase.
+
 ## Структура проекта
 
 ```bash
@@ -131,8 +237,6 @@ EasyTalk — это образовательное iOS-приложение дл
 ├── .git/               # Git-репозиторий
 ├── .gitignore          # Общие исключения для репозитория
 ├── README.md           # Этот файл с документацией
-├── firebase.json       # Конфигурация Firebase
-├── .firebaserc         # Настройки Firebase проектов
 ├── backend/            # Бэкенд на FastAPI
 │   ├── domain/         # Доменные модели (UserModel, SessionModel и т.д.)
 │   ├── repositories/   # Репозитории для работы с Firestore
@@ -223,21 +327,6 @@ pytest tests/routers/test_profile_router.py -v
 ```
 
 Проект содержит более 100 тестов, покрывающих доменные модели, репозитории, сервисы и API эндпоинты.
-
-## Memory Bank
-
-Проект использует Memory Bank для хранения и отслеживания контекста проекта:
-
-```plaintext
-/memory-bank/
-├── activeContext.md   # Текущее состояние и цели разработки
-├── decisionLog.md     # Журнал важных решений по проекту
-├── productContext.md  # Общее описание проекта и его архитектуры
-├── progress.md        # Отслеживание статуса работы (завершено/текущее/следующее)
-└── systemPatterns.md  # Документация повторяющихся шаблонов и стандартов
-```
-
-Файлы Memory Bank содержат важную информацию о проекте и служат как документация и контекст для разработчиков.
 
 ## Лицензия
 
