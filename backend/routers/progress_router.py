@@ -5,13 +5,12 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import date, datetime, timedelta
 
-from backend.domain.progress import ProgressRecord
-from backend.services.progress_service import ProgressService
-from backend.shared.auth import get_current_user_id
-from backend.shared.utils import to_iso_datetime, from_iso_datetime
-
-# Инициализируем сервис прогресса
-progress_service = ProgressService()
+from domain.progress import ProgressRecord
+from services.progress_service import ProgressService
+from repositories.progress_repository import ProgressRepository # Оставляем для ProgressService
+from shared.auth import get_current_user_id
+from shared.utils import to_iso_datetime, from_iso_datetime
+from shared.dependencies import get_progress_repository # Импортируем из shared
 
 # Создаем роутер для прогресса
 router = APIRouter(prefix="/progress", tags=["progress"])
@@ -49,7 +48,7 @@ class ProgressResponse(BaseModel):
 
 
 @router.post("", response_model=SaveProgressResponse)
-async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_current_user_id)):
+async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_current_user_id), progress_service: ProgressService = Depends(ProgressService)):
     """
     Сохранить ежедневный прогресс пользователя.
     Требуется токен авторизации.
@@ -68,7 +67,7 @@ async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_cur
             )
     
     try:
-        # Используем сервис для сохранения прогресса
+        # Используем сервис для сохранения прогресса (progress_service теперь внедряется)
         progress_id = progress_service.record_progress(
             user_id=uid,
             score=request.score,
@@ -93,15 +92,16 @@ async def save_progress(request: SaveProgressRequest, uid: str = Depends(get_cur
 @router.get("", response_model=ProgressResponse)
 async def get_progress(
     days: int = Query(7, ge=1, le=30, description="Количество дней для выборки"),
-    uid: str = Depends(get_current_user_id)
+    uid: str = Depends(get_current_user_id),
+    progress_service: ProgressService = Depends(ProgressService)
 ):
     """
     Получить прогресс пользователя за указанное количество дней.
     Требуется токен авторизации.
     """
     try:
-        # Используем сервис для получения прогресса
-        progress_data = progress_service.get_progress(uid, days)
+        # Используем сервис для получения прогресса (progress_service теперь внедряется)
+        progress_data = progress_service.get_progress(user_id=uid, days=days)
         
         # Если данных нет, возвращаем пустой ответ
         if not progress_data["data"]:
@@ -142,14 +142,14 @@ class WeeklySummaryResponse(BaseModel):
     total_weekly_score: int
 
 @router.get("/weekly-summary", response_model=WeeklySummaryResponse)
-async def get_weekly_summary(uid: str = Depends(get_current_user_id)):
+async def get_weekly_summary(uid: str = Depends(get_current_user_id), progress_service: ProgressService = Depends(ProgressService)):
     """
     Получить общее количество очков пользователя за последнюю неделю.
     Требуется токен авторизации.
     """
     try:
-        total_score = progress_service.get_weekly_summary(user_id=uid)
-        return WeeklySummaryResponse(total_weekly_score=total_score)
+        total_weekly_score = progress_service.get_weekly_score(user_id=uid) # progress_service теперь внедряется
+        return WeeklySummaryResponse(total_weekly_score=total_weekly_score)
     except Exception as e:
         # В реальном приложении здесь стоит логировать ошибку 'e'
         raise HTTPException(

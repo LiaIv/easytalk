@@ -1,14 +1,13 @@
 # backend/repositories/achievement_repository.py
 
-from backend.shared.config import firestore_client
-from backend.domain.achievement import AchievementModel
+from domain.achievement import AchievementModel, AchievementType # Добавлен AchievementType
 from datetime import date
 from typing import Optional
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 class AchievementRepository:
-    def __init__(self):
-        self._collection = firestore_client.collection("achievements")
+    def __init__(self, db):
+        self._collection = db.collection("achievements")
 
     def create_achievement(self, achievement: AchievementModel) -> None:
         """
@@ -27,7 +26,7 @@ class AchievementRepository:
             # Если period_start_date хранится как строка, преобразуем её обратно в date
             ps = obj.get("period_start_date")
             if ps is not None:
-                # Напомним: Pydantic-модель AchievementModel ожидает `period_start_date` как date | None
+                # Pydantic-модель AchievementModel ожидает `period_start_date` как date | None
                 obj["period_start_date"] = date.fromisoformat(ps)
             results.append(AchievementModel(**obj))
         return results
@@ -49,14 +48,13 @@ class AchievementRepository:
         Удаляет еженедельные достижения (weekly_fifty) для указанного пользователя и периода.
         """
         period_str = period_start.isoformat()
-        docs_query = (
+        docs_to_delete_stream = (
             self._collection
             .where(filter=FieldFilter("user_id", "==", user_id))
-            .where(filter=FieldFilter("type", "==", "weekly_fifty"))
+            .where(filter=FieldFilter("type", "==", AchievementType.WEEKLY_FIFTY.value))
             .where(filter=FieldFilter("period_start_date", "==", period_str))
+            .stream()
         )
         
-        docs_to_delete = list(docs_query.stream())
-        
-        for doc in docs_to_delete:
+        for doc in docs_to_delete_stream:
             doc.reference.delete()

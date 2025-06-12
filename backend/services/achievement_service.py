@@ -1,16 +1,18 @@
 # backend/services/achievement_service.py
 
 from datetime import datetime, timedelta, timezone
-from backend.repositories.achievement_repository import AchievementRepository
-from backend.repositories.progress_repository import ProgressRepository
-from backend.domain.achievement import AchievementModel, AchievementType
+from fastapi import Depends
+from repositories.achievement_repository import AchievementRepository
+from repositories.progress_repository import ProgressRepository
+from domain.achievement import AchievementModel, AchievementType
+from shared.dependencies import get_achievement_repository, get_progress_repository
 import uuid
 
 class AchievementService:
     def __init__(
         self,
-        achievement_repo: AchievementRepository,
-        progress_repo: ProgressRepository
+        achievement_repo: AchievementRepository = Depends(get_achievement_repository),
+        progress_repo: ProgressRepository = Depends(get_progress_repository)
     ):
         self._achievement_repo = achievement_repo
         self._progress_repo = progress_repo

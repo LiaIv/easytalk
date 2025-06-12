@@ -1,20 +1,26 @@
 # backend/main.py (FastAPI version)
 import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла
+# Это должно быть сделано до импорта других модулей, которые могут использовать эти переменные
+load_dotenv()
+
 import uvicorn
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 # Импорт инфраструктурных компонентов
-from backend.shared.firebase_client import initialize_firebase
+# Заменяем старый импорт на новый
+from shared.firebase_client import initialize_app_for_context, _DEFAULT_APP_NAME
 
 # Импорт роутеров
-from backend.routers.profile_router import router as profile_router
-from backend.routers.session_router import router as session_router
-from backend.routers.progress_router import router as progress_router
-from backend.routers.content_router import router as content_router
+from routers.profile_router import router as profile_router
+from routers.session_router import router as session_router
+from routers.progress_router import router as progress_router
+from routers.content_router import router as content_router
 
-# --- Инициализация Firebase Admin SDK ---
-initialize_firebase()
+# --- Firebase Startup Event ---
 
 # --- Создание FastAPI приложения ---
 app = FastAPI(
@@ -22,6 +28,14 @@ app = FastAPI(
     description="API сервер для детского образовательного приложения EasyTalk",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Initializes Firebase on application startup."""
+    print("[main.py] FastAPI app startup: Initializing Firebase...")
+    # The initialize_app_for_context function will now determine the environment by itself.
+    initialize_app_for_context()
+    print("[main.py] Firebase initialized on startup.")
 
 # --- Настройка CORS ---
 app.add_middleware(

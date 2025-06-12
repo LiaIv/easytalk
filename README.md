@@ -61,6 +61,7 @@ EasyTalk — это образовательное iOS-приложение дл
 - Python 3.9 или выше
 - Firebase CLI (для эмуляторов Firebase)
 - pip или другой менеджер зависимостей Python
+- poetry (для управления зависимостями)
 
 ### Настройка окружения
 
@@ -79,6 +80,9 @@ EasyTalk — это образовательное iOS-приложение дл
    source venv/bin/activate  # для Linux/Mac
    # или venv\Scripts\activate  # для Windows
    pip install -r requirements.txt
+
+   # Также мы используем поетри и тут другой способ
+   poetry install
    ```
 
 3. Настройка Firebase эмуляторов:
@@ -111,6 +115,8 @@ EasyTalk — это образовательное iOS-приложение дл
    ```bash
    cd backend  # если вы еще не в этой директории
    uvicorn main:app --reload --port 8080
+   # или другой вариант через poetry
+   poetry run uvicorn main:app --reload
    ```
 
 После запуска, API будет доступно по адресу: `http://localhost:8080`

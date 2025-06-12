@@ -1,4 +1,4 @@
-# functions/Dockerfile
+# backend/Dockerfile
 
 # 1) Берём официальный облегчённый образ Python 3.13
 FROM python:3.13-slim

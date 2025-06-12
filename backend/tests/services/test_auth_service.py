@@ -8,22 +8,28 @@ from datetime import datetime
 from domain.user import UserModel
 from services.auth_service import AuthService
 from repositories.user_repository import UserRepository
+from google.cloud.firestore import Client
 
 
 class TestAuthService:
     """Тесты для сервиса аутентификации"""
 
     @pytest.fixture
-    def user_repository_mock(self):
-        """Мок для UserRepository"""
-        mock = Mock(spec=UserRepository)
-        return mock
-    
+    def db_mock(self):
+        """Мок для Firestore Client"""
+        return Mock(spec=Client)
+
     @pytest.fixture
-    def auth_service(self, user_repository_mock):
-        """Создание экземпляра сервиса с моком для UserRepository"""
+    def user_repository_mock(self):
+        """Мок для UserRepository. Используется для проверки вызовов к нему."""
+        return Mock(spec=UserRepository)
+
+    @pytest.fixture
+    def auth_service(self, db_mock, user_repository_mock):
+        """Создание экземпляра сервиса с моком для db и UserRepository."""
+        # Патчим UserRepository в модуле, где он используется AuthService
         with patch('services.auth_service.UserRepository', return_value=user_repository_mock):
-            service = AuthService()
+            service = AuthService(db=db_mock)
             return service
 
     @patch('firebase_admin.auth.create_user')

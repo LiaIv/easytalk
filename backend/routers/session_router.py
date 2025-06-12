@@ -1,20 +1,14 @@
 # backend/routers/session_router.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, conint
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List
 
-from backend.domain.session import RoundDetail, SessionModel
-from backend.services.session_service import SessionService
-from backend.repositories.session_repository import SessionRepository
-from backend.repositories.achievement_repository import AchievementRepository
-from backend.shared.auth import get_current_user_id
-
-# Инициализируем репозитории
-session_repo = SessionRepository()
-achievement_repo = AchievementRepository()
-
-# Инициализируем сервис сессий, передавая необходимые репозитории
-session_service = SessionService(session_repo, achievement_repo)
+from domain.session import RoundDetail, SessionModel
+from services.session_service import SessionService
+from repositories.session_repository import SessionRepository # Оставляем для SessionService
+from repositories.achievement_repository import AchievementRepository # Оставляем для SessionService
+from shared.auth import get_current_user_id
+from shared.dependencies import get_session_repository, get_achievement_repository # Импортируем из shared
 
 # Создаем роутер для сессий
 router = APIRouter(prefix="/session", tags=["session"])
@@ -38,7 +32,7 @@ class FinishSessionResponse(BaseModel):
 
 
 @router.post("/start", response_model=StartSessionResponse)
-async def start_session(request: StartSessionRequest, uid: str = Depends(get_current_user_id)):
+async def start_session(request: StartSessionRequest, uid: str = Depends(get_current_user_id), session_service: SessionService = Depends(SessionService)):
     """
     Начать новую игровую сессию заданного типа.
     Требуется токен авторизации.
@@ -66,7 +60,8 @@ async def start_session(request: StartSessionRequest, uid: str = Depends(get_cur
 async def finish_session(
     request: FinishSessionRequest,
     session_id: str = Query(..., description="ID сессии для завершения"),
-    uid: str = Depends(get_current_user_id)
+    uid: str = Depends(get_current_user_id),
+    session_service: SessionService = Depends(SessionService)
 ):
     """
     Завершить игровую сессию с результатами и получить подтверждение.
@@ -91,7 +86,7 @@ async def finish_session(
 
 
 @router.get("/active", response_model=SessionModel)
-async def get_active_session(uid: str = Depends(get_current_user_id)):
+async def get_active_session(uid: str = Depends(get_current_user_id), session_service: SessionService = Depends(SessionService)):
     """
     Получить данные об активной сессии пользователя, если такая существует.
     Требуется токен авторизации.

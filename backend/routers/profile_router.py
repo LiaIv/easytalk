@@ -4,12 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-from backend.shared.auth import get_current_user_id
-from backend.domain.user import UserModel
-from backend.repositories.user_repository import UserRepository
-
-# Инициализируем репозиторий пользователей
-user_repository = UserRepository()
+from shared.auth import get_current_user_id
+from domain.user import UserModel
+from repositories.user_repository import UserRepository
+from shared.dependencies import get_user_repository # Импортируем get_user_repository
 
 # Создаем роутер для профиля
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -22,12 +20,13 @@ class UpdateProfileRequest(BaseModel):
 
 
 @router.get("", response_model=UserModel)
-async def get_profile(uid: str = Depends(get_current_user_id)):
+async def get_profile(uid: str = Depends(get_current_user_id), user_repository: UserRepository = Depends(get_user_repository)):
     """
     Получить профиль текущего пользователя.
     Требуется токен авторизации.
     """
     try:
+        # user_repository теперь внедряется через Depends
         user = await user_repository.get_user(uid)
         if not user:
             raise HTTPException(
@@ -48,13 +47,15 @@ async def get_profile(uid: str = Depends(get_current_user_id)):
 @router.put("", response_model=UserModel)
 async def update_profile(
     update_data: UpdateProfileRequest, 
-    uid: str = Depends(get_current_user_id)
+    uid: str = Depends(get_current_user_id),
+    user_repository: UserRepository = Depends(get_user_repository)
 ):
     """
     Обновить профиль текущего пользователя.
     Требуется токен авторизации.
     """
     try:
+        # user_repository теперь внедряется через Depends
         current_user = await user_repository.get_user(uid)
         update_dict = update_data.model_dump(exclude_unset=True)
 
@@ -82,6 +83,7 @@ async def update_profile(
         
         updated_user = UserModel(**updated_user_data)
         
+        # user_repository теперь внедряется через Depends
         await user_repository.create_or_update_user(updated_user)
         return updated_user
 

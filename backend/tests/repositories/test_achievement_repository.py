@@ -11,20 +11,10 @@ from repositories.achievement_repository import AchievementRepository
 class TestAchievementRepository:
     """Тесты для репозитория достижений пользователей"""
 
-    @pytest.fixture(autouse=True)
-    def clear_achievements_collection(self, firestore_client):
-        """Очищает коллекцию achievements перед каждым тестом"""
-        collection_ref = firestore_client.collection("achievements")
-        docs = collection_ref.stream()
-        for doc in docs:
-            doc.reference.delete()
-        yield # Тест выполняется здесь
-        # Очистка после теста (если необходимо, но обычно yield достаточно)
-
     @pytest.fixture
-    def achievement_repository(self):
+    def achievement_repository(self, clean_firestore):
         """Инициализируем репозиторий для тестов"""
-        return AchievementRepository()
+        return AchievementRepository(db=clean_firestore)
 
     @pytest.fixture
     def sample_perfect_streak(self):
@@ -50,29 +40,34 @@ class TestAchievementRepository:
             period_start_date=period_start
         )
 
-    def test_create_achievement(self, achievement_repository, sample_perfect_streak, firestore_client):
+    def test_create_achievement(self, achievement_repository, sample_perfect_streak, clean_firestore):
         """Тест создания достижения в БД"""
-        # Создаем достижение
+        print("\n[DEBUG] test_create_achievement: Начало теста")
+        
+        print("[DEBUG] test_create_achievement: Перед achievement_repository.create_achievement()")
         achievement_repository.create_achievement(sample_perfect_streak)
+        print("[DEBUG] test_create_achievement: После achievement_repository.create_achievement()")
 
-        # Проверяем, что достижение создано в Firestore
-        doc = firestore_client.collection("achievements").document(sample_perfect_streak.achievement_id).get()
+        print("[DEBUG] test_create_achievement: Перед clean_firestore.collection.get()")
+        doc = clean_firestore.collection("achievements").document(sample_perfect_streak.achievement_id).get()
+        print("[DEBUG] test_create_achievement: После firestore_client.collection.get()")
+        
         assert doc.exists
 
-        # Проверяем, что данные корректны
         achievement_data = doc.to_dict()
         assert achievement_data["user_id"] == sample_perfect_streak.user_id
         assert achievement_data["type"] == sample_perfect_streak.type.value
-        assert isinstance(achievement_data["earned_at"], str)  # Дата сериализована в строку
+        assert isinstance(achievement_data["earned_at"], str) 
         assert achievement_data["session_id"] == sample_perfect_streak.session_id
+        print("[DEBUG] test_create_achievement: Тест завершен успешно")
 
-    def test_create_weekly_achievement(self, achievement_repository, sample_weekly_fifty, firestore_client):
+    def test_create_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore):
         """Тест создания еженедельного достижения в БД"""
         # Создаем достижение
         achievement_repository.create_achievement(sample_weekly_fifty)
 
         # Проверяем, что достижение создано в Firestore
-        doc = firestore_client.collection("achievements").document(sample_weekly_fifty.achievement_id).get()
+        doc = clean_firestore.collection("achievements").document(sample_weekly_fifty.achievement_id).get()
         assert doc.exists
 
         # Проверяем, что данные корректны
@@ -82,7 +77,7 @@ class TestAchievementRepository:
         assert isinstance(achievement_data["earned_at"], str)  # Дата сериализована в строку
         assert achievement_data["period_start_date"] == sample_weekly_fifty.period_start_date.isoformat()
 
-    def test_get_user_achievements(self, achievement_repository, sample_perfect_streak, sample_weekly_fifty, firestore_client):
+    def test_get_user_achievements(self, achievement_repository, sample_perfect_streak, sample_weekly_fifty, clean_firestore):
         """Тест получения всех достижений пользователя"""
         # Создаем несколько достижений для одного пользователя
         user_id = "test_user_456"
@@ -92,12 +87,12 @@ class TestAchievementRepository:
         sample_weekly_fifty.user_id = user_id
         
         # Сохраняем достижения напрямую в Firestore
-        firestore_client.collection("achievements").document(sample_perfect_streak.achievement_id).set(
-            sample_perfect_streak.model_dump(mode="json")
+        clean_firestore.collection("achievements").document(sample_perfect_streak.achievement_id).set(
+            sample_perfect_streak.model_dump(exclude_none=True)
         )
         
-        firestore_client.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
-            sample_weekly_fifty.model_dump(mode="json")
+        clean_firestore.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
+            sample_weekly_fifty.model_dump(exclude_none=True)
         )
         
         # Получаем достижения пользователя
@@ -111,7 +106,7 @@ class TestAchievementRepository:
         assert AchievementType.PERFECT_STREAK in achievement_types
         assert AchievementType.WEEKLY_FIFTY in achievement_types
         
-    def test_exists_weekly_achievement(self, achievement_repository, sample_weekly_fifty, firestore_client):
+    def test_exists_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore):
         """Тест проверки существования еженедельного достижения"""
         user_id = "test_user_789"
         period_start = date.today() - timedelta(days=date.today().weekday())
@@ -134,7 +129,7 @@ class TestAchievementRepository:
         exists = achievement_repository.exists_weekly_achievement(user_id, other_period)
         assert exists is False
         
-    def test_delete_weekly_achievements(self, achievement_repository, firestore_client):
+    def test_delete_weekly_achievements(self, achievement_repository, clean_firestore):
         """Тест удаления еженедельных достижений"""
         user_id = "test_user_999"
         period_start = date.today() - timedelta(days=date.today().weekday())

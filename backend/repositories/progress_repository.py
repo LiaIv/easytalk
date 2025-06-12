@@ -1,14 +1,14 @@
 # backend/repositories/progress_repository.py
 
-from backend.shared.config import firestore_client
-from backend.domain.progress import ProgressRecord
+
+from domain.progress import ProgressRecord
 from datetime import date, datetime
 from typing import List
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 class ProgressRepository:
-    def __init__(self):
-        self._collection = firestore_client.collection("progress")
+    def __init__(self, db):
+        self._collection = db.collection("progress")
 
     def record_daily_score(self, record: ProgressRecord) -> None:
         """
