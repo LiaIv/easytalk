@@ -1,19 +1,17 @@
-# backend/repositories/session_repository.py
-
-
 from domain.session import SessionModel, RoundDetail
-from google.cloud.firestore import WriteBatch
+from google.cloud.firestore_v1.async_client import AsyncClient
+from google.cloud.firestore_v1.async_batch import AsyncWriteBatch
 from typing import List
 from datetime import datetime
 
 
 class SessionRepository:
-    def __init__(self, db):
+    def __init__(self, db: AsyncClient):
         # Клиент Firestore передается через конструктор
         self._db = db # Сохраняем клиент в self._db для использования в других методах
         self._collection = self._db.collection("sessions")
 
-    def create_session(self, session: SessionModel) -> None:
+    async def create_session(self, session: SessionModel) -> None:
         """
         Создаёт новый документ sessions/{session_id} с полями:
         - user_id
@@ -25,9 +23,9 @@ class SessionRepository:
         # но явно исключаем session_id, end_time, score и details,
         # чтобы в Firestore хранились только user_id, game_type, start_time, status
         data = session.model_dump(mode="json", exclude={"session_id", "end_time", "score", "details"})
-        self._collection.document(session.session_id).set(data)
+        await self._collection.document(session.session_id).set(data)
 
-    def update_session(
+    async def update_session(
         self,
         session_id: str,
         details: List[RoundDetail],
@@ -41,21 +39,21 @@ class SessionRepository:
         Всё в атомарном WriteBatch.
         """
         # Используем self._db для создания batch
-        batch: WriteBatch = self._db.batch()
+        batch: AsyncWriteBatch = self._db.batch()
         doc_ref = self._collection.document(session_id)
         batch.update(doc_ref, {
             "details": [d.model_dump(mode="json") for d in details],
             "ended_at": ended_at.isoformat(),  # Преобразуем datetime в ISO строку
             "score": score
         })
-        batch.commit()
+        await batch.commit()
 
-    def get_session(self, session_id: str) -> SessionModel | None:
+    async def get_session(self, session_id: str) -> SessionModel | None:
         """
         Получает документ sessions/{session_id} из Firestore и возвращает SessionModel.
         Если документа нет – возвращает None.
         """
-        doc = self._collection.document(session_id).get()
+        doc = await self._collection.document(session_id).get()
         if doc.exists:
             data = doc.to_dict()
             # В полученных данных уже нет session_id, поэтому передаём его отдельно

@@ -1,5 +1,3 @@
-# backend/routers/profile_router.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -7,7 +5,7 @@ from typing import Optional
 from shared.auth import get_current_user_id
 from domain.user import UserModel
 from repositories.user_repository import UserRepository
-from shared.dependencies import get_user_repository # Импортируем get_user_repository
+from shared.dependencies import get_user_repository
 
 # Создаем роутер для профиля
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -20,7 +18,10 @@ class UpdateProfileRequest(BaseModel):
 
 
 @router.get("", response_model=UserModel)
-async def get_profile(uid: str = Depends(get_current_user_id), user_repository: UserRepository = Depends(get_user_repository)):
+async def get_profile(
+    uid: str = Depends(get_current_user_id),
+    user_repository: UserRepository = Depends(get_user_repository),
+):
     """
     Получить профиль текущего пользователя.
     Требуется токен авторизации.

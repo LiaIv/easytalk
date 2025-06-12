@@ -1,12 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock
-import datetime # Добавим импорт datetime
+from unittest.mock import MagicMock, AsyncMock
 
-from backend.main import app
-from backend.shared.auth import get_current_user_id
+from main import app
+from shared.auth import get_current_user_id
+from shared.dependencies import get_progress_service
+from services.progress_service import ProgressService
 
-PROGRESS_SERVICE_PATH = "backend.routers.progress_router.progress_service"
 TEST_USER_ID = "test_user_progress_router"
 
 @pytest.fixture
@@ -17,13 +17,15 @@ def client_with_auth_override(client: TestClient):
     app.dependency_overrides.clear()
 
 
-def test_save_progress_success(client_with_auth_override: TestClient, monkeypatch):
+def test_save_progress_success(client_with_auth_override: TestClient):
     """
     Тест успешного сохранения прогресса POST /api/progress
     """
-    mock_service = MagicMock()
-    mock_service.record_progress.return_value = "mock_progress_id_123"
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.record_progress = AsyncMock(return_value="mock_progress_id_123")
+
+    # Переопределяем зависимость на уровне приложения
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     request_data = {
         "score": 100,
@@ -51,6 +53,10 @@ def test_save_progress_success(client_with_auth_override: TestClient, monkeypatc
         time_spent=request_data["time_spent"],
         record_date=expected_date
     )
+
+    # Чистим override
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)
+
 
 # Дальнейшие тесты будут добавлены здесь
 
@@ -104,11 +110,12 @@ def test_save_progress_invalid_data(client_with_auth_override: TestClient):
     assert response_json["detail"] == "Invalid date format. Use YYYY-MM-DD."
 
 
-def test_get_progress_success(client_with_auth_override: TestClient, monkeypatch):
+def test_get_progress_success(client_with_auth_override: TestClient):
     """
     Тест успешного получения прогресса GET /api/progress
     """
-    mock_service = MagicMock()
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.get_progress = AsyncMock()
 
     # Данные, которые, как мы ожидаем, вернет сервис
     expected_service_output = {
@@ -127,7 +134,8 @@ def test_get_progress_success(client_with_auth_override: TestClient, monkeypatch
         "success_rate": 1.0
     }
     mock_service.get_progress.return_value = expected_service_output
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     # Данные, которые, как мы ожидаем, вернет API (после преобразования)
     expected_api_response = {
@@ -154,6 +162,9 @@ def test_get_progress_success(client_with_auth_override: TestClient, monkeypatch
     
     mock_service.get_progress.assert_called_once_with(TEST_USER_ID, 7)
 
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)
+
+
 def test_get_progress_invalid_days_param(client_with_auth_override: TestClient):
     """
     Тест получения прогресса с некорректным параметром 'days' GET /api/progress
@@ -174,15 +185,17 @@ def test_get_progress_invalid_days_param(client_with_auth_override: TestClient):
     assert any("days" in err["loc"] and "query" in err["loc"] for err in response_json["detail"] if "type" in err and "less_than_equal" in err["type"])
 
 
-def test_get_weekly_summary_success(client_with_auth_override: TestClient, monkeypatch):
+def test_get_weekly_summary_success(client_with_auth_override: TestClient):
     """
     Тест успешного получения еженедельной сводки GET /api/progress/weekly-summary
     """
-    mock_service = MagicMock()
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.get_weekly_summary = AsyncMock()
+
     expected_weekly_score = 150
     mock_service.get_weekly_summary.return_value = expected_weekly_score
     
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     response = client_with_auth_override.get("/api/progress/weekly-summary")
     
@@ -191,6 +204,8 @@ def test_get_weekly_summary_success(client_with_auth_override: TestClient, monke
     assert response_json == {"total_weekly_score": expected_weekly_score}
     
     mock_service.get_weekly_summary.assert_called_once_with(user_id=TEST_USER_ID)
+
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)
 
 
 def test_save_progress_unauthorized(client: TestClient): # Используем client без auth override
@@ -209,14 +224,15 @@ def test_save_progress_unauthorized(client: TestClient): # Используем 
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated. Authorization header is missing."} # Стандартный ответ FastAPI
 
-def test_save_progress_service_exception(client_with_auth_override: TestClient, monkeypatch):
+def test_save_progress_service_exception(client_with_auth_override: TestClient):
     """
     Тест сохранения прогресса, когда сервис вызывает исключение POST /api/progress
     Должен возвращать 500 Internal Server Error.
     """
-    mock_service = MagicMock()
-    mock_service.record_progress.side_effect = RuntimeError("Database connection failed")
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.record_progress = AsyncMock(side_effect=RuntimeError("Database connection failed"))
+
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     valid_data = {
         "score": 100,
@@ -234,6 +250,8 @@ def test_save_progress_service_exception(client_with_auth_override: TestClient, 
     
     mock_service.record_progress.assert_called_once()
 
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)
+
 
 def test_get_progress_unauthorized(client: TestClient):
     """
@@ -244,14 +262,15 @@ def test_get_progress_unauthorized(client: TestClient):
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
 
-def test_get_progress_service_exception(client_with_auth_override: TestClient, monkeypatch):
+def test_get_progress_service_exception(client_with_auth_override: TestClient):
     """
     Тест получения прогресса, когда сервис вызывает исключение GET /api/progress
     Должен возвращать 500 Internal Server Error.
     """
-    mock_service = MagicMock()
-    mock_service.get_progress.side_effect = RuntimeError("Service unavailable")
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.get_progress = AsyncMock(side_effect=RuntimeError("Service unavailable"))
+
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     response = client_with_auth_override.get("/api/progress?days=7")
     
@@ -262,6 +281,9 @@ def test_get_progress_service_exception(client_with_auth_override: TestClient, m
     
     mock_service.get_progress.assert_called_once()
 
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)
+
+
 def test_get_weekly_summary_unauthorized(client: TestClient):
     """
     Тест получения еженедельной сводки без авторизации GET /api/progress/weekly-summary
@@ -271,14 +293,15 @@ def test_get_weekly_summary_unauthorized(client: TestClient):
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
 
-def test_get_weekly_summary_service_exception(client_with_auth_override: TestClient, monkeypatch):
+def test_get_weekly_summary_service_exception(client_with_auth_override: TestClient):
     """
     Тест получения еженедельной сводки, когда сервис вызывает исключение GET /api/progress/weekly-summary
     Должен возвращать 500 Internal Server Error.
     """
-    mock_service = MagicMock()
-    mock_service.get_weekly_summary.side_effect = RuntimeError("Summary service failed")
-    monkeypatch.setattr(PROGRESS_SERVICE_PATH, mock_service)
+    mock_service = MagicMock(spec=ProgressService)
+    mock_service.get_weekly_summary = AsyncMock(side_effect=RuntimeError("Summary service failed"))
+
+    client_with_auth_override.app.dependency_overrides[get_progress_service] = lambda: mock_service
 
     response = client_with_auth_override.get("/api/progress/weekly-summary")
     
@@ -289,3 +312,4 @@ def test_get_weekly_summary_service_exception(client_with_auth_override: TestCli
     
     mock_service.get_weekly_summary.assert_called_once()
 
+    client_with_auth_override.app.dependency_overrides.pop(get_progress_service, None)

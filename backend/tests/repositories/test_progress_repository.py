@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import date, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from domain.progress import ProgressRecord
 from repositories.progress_repository import ProgressRepository
 
@@ -11,9 +11,9 @@ class TestProgressRepository:
     """Тесты для репозитория прогресса пользователей"""
 
     @pytest.fixture
-    def progress_repository(self, clean_firestore):
+    def progress_repository(self, clean_firestore_async):
         """Инициализируем репозиторий для тестов"""
-        return ProgressRepository(db=clean_firestore)
+        return ProgressRepository(db=clean_firestore_async)
 
     @pytest.fixture
     def sample_progress_record(self):
@@ -27,16 +27,17 @@ class TestProgressRepository:
             time_spent=120.5  # 2 минуты 30 секунд
         )
 
-    def test_record_daily_score(self, progress_repository, sample_progress_record, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_record_daily_score(self, progress_repository, sample_progress_record, clean_firestore_async):
         """Тест записи дневного прогресса пользователя"""
         # Записываем прогресс
-        progress_repository.record_daily_score(sample_progress_record)
+        await progress_repository.record_daily_score(sample_progress_record)
 
         # Формируем ID документа как в репозитории
         doc_id = f"{sample_progress_record.user_id}_{sample_progress_record.date.isoformat()}"
         
         # Проверяем, что запись создана в Firestore
-        doc = clean_firestore.collection("progress").document(doc_id).get()
+        doc = await clean_firestore_async.collection("progress").document(doc_id).get()
         assert doc.exists
         
         # Проверяем данные в записи
@@ -48,7 +49,8 @@ class TestProgressRepository:
         assert progress_data["total_answers"] == sample_progress_record.total_answers
         assert progress_data["time_spent"] == sample_progress_record.time_spent
 
-    def test_sum_scores_for_week(self, progress_repository, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_sum_scores_for_week(self, progress_repository, monkeypatch):
         """Тест суммирования очков за неделю с использованием моков"""
         user_id = "test_user_456"
         end_date = date.today()
@@ -75,7 +77,7 @@ class TestProgressRepository:
         where1_mock = MagicMock(name="where1_mock")
         where2_mock = MagicMock(name="where2_mock")
         query_mock = MagicMock(name="query_mock")
-        stream_mock = MagicMock(name="stream_mock")
+        stream_mock = AsyncMock(name="stream_mock")
         
         # Связывание цепочки вызовов
         monkeypatch.setattr(progress_repository, "_collection", collection_mock)
@@ -90,25 +92,26 @@ class TestProgressRepository:
             doc_mock.to_dict.return_value = record
             doc_mocks.append(doc_mock)
         
-        # Синхронный генератор документов
-        def mock_documents_generator():
+        # Сделаем синхронный генератор документов
+        async def mock_documents_generator():
             for doc in doc_mocks:
                 yield doc
                 
-        # Настройка stream() для возврата генератора документов
-        stream_mock.return_value = mock_documents_generator()
+        # Изменяем stream на функцию, возвращающую async-генератор, как в real Firestore
+        where2_mock.stream = mock_documents_generator
         
         # Вызываем тестируемый метод
         # Преобразуем дату в объект datetime, как того ожидает метод
         end_datetime = datetime.combine(end_date, datetime.min.time())
-        total = progress_repository.sum_scores_for_week(user_id, end_datetime)
+        total = await progress_repository.sum_scores_for_week(user_id, end_datetime)
         
         # Проверяем сумму: 4 + 5 + 6 + 7 + 8 + 9 + 10 = 49
         expected_total = sum(range(4, 11))
         assert total == expected_total
 
         
-    def test_get_progress(self, progress_repository, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_get_progress(self, progress_repository, monkeypatch):
         """Тест получения записей прогресса за указанный период с использованием моков"""
         user_id = "test_user_789"
         today = date.today()
@@ -136,7 +139,7 @@ class TestProgressRepository:
         where1_mock = MagicMock(name="where1_mock")
         where2_mock = MagicMock(name="where2_mock")
         query_mock = MagicMock(name="query_mock")
-        stream_mock = MagicMock(name="stream_mock")
+        stream_mock = AsyncMock(name="stream_mock")
         
         # Связывание цепочки вызовов
         monkeypatch.setattr(progress_repository, "_collection", collection_mock)
@@ -157,19 +160,19 @@ class TestProgressRepository:
             doc_mocks.append(doc_mock)
         
         # Сделаем синхронный генератор для возврата документов
-        def mock_documents_generator():
+        async def mock_documents_generator():
             for doc in doc_mocks:
                 yield doc
                 
-        # Настройка stream() для возврата генератора документов
-        stream_mock.return_value = mock_documents_generator()
+        # Изменяем stream на функцию, возвращающую async-генератор, как в real Firestore
+        query_mock.stream = mock_documents_generator
         
         # Выбираем период для запроса: последние 3 дня
         start_date = (today - timedelta(days=2)).isoformat()
         end_date = today.isoformat()
         
         # Вызываем тестируемый метод
-        result_records = progress_repository.get_progress(user_id, start_date, end_date)
+        result_records = await progress_repository.get_progress(user_id, start_date, end_date)
         
         # Проверяем количество записей
         assert len(result_records) == 3

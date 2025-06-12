@@ -1,52 +1,47 @@
-# backend/repositories/achievement_repository.py
-
-from domain.achievement import AchievementModel, AchievementType # Добавлен AchievementType
 from datetime import date
-from typing import Optional
+from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.base_query import FieldFilter
 
+from domain.achievement import AchievementModel, AchievementType
+
+
 class AchievementRepository:
-    def __init__(self, db):
+    def __init__(self, db: AsyncClient):
         self._collection = db.collection("achievements")
 
-    def create_achievement(self, achievement: AchievementModel) -> None:
+    async def create_achievement(self, achievement: AchievementModel) -> None:
         """
         Сохраняем AchievementModel в Firestore. С помощью mode="json" 
         все типы date и datetime будут автоматически преобразованы в строки JSON.
         """
         data = achievement.model_dump(mode="json")
-        # Идентификатор документа — achievement_id
-        self._collection.document(achievement.achievement_id).set(data)
+        await self._collection.document(achievement.achievement_id).set(data)
 
-    def get_user_achievements(self, user_id: str) -> list[AchievementModel]:
-        docs = self._collection.where(filter=FieldFilter("user_id", "==", user_id)).stream()
+    async def get_user_achievements(self, user_id: str) -> list[AchievementModel]:
+        docs_stream = self._collection.where(filter=FieldFilter("user_id", "==", user_id)).stream()
         results = []
-        for doc in docs:
+        async for doc in docs_stream:
             obj = doc.to_dict()
-            # Если period_start_date хранится как строка, преобразуем её обратно в date
-            ps = obj.get("period_start_date")
-            if ps is not None:
-                # Pydantic-модель AchievementModel ожидает `period_start_date` как date | None
+            if ps := obj.get("period_start_date"):
                 obj["period_start_date"] = date.fromisoformat(ps)
             results.append(AchievementModel(**obj))
         return results
 
-    def exists_weekly_achievement(self, user_id: str, period_start: date) -> bool:
-        # Firestore хранит period_start_date в виде строки, поэтому сравним со строковым ISO
+    async def exists_weekly_achievement(self, user_id: str, period_start: date) -> bool:
         period_str = period_start.isoformat()
-        docs = (
+        docs_stream = (
             self._collection
             .where(filter=FieldFilter("user_id", "==", user_id))
-            .where(filter=FieldFilter("type", "==", "weekly_fifty"))
+            .where(filter=FieldFilter("type", "==", AchievementType.WEEKLY_FIFTY.value))
             .where(filter=FieldFilter("period_start_date", "==", period_str))
+            .limit(1)
             .stream()
         )
-        return any(True for _ in docs)
+        async for _ in docs_stream:
+            return True
+        return False
 
-    def delete_weekly_achievements(self, user_id: str, period_start: date) -> None:
-        """
-        Удаляет еженедельные достижения (weekly_fifty) для указанного пользователя и периода.
-        """
+    async def delete_weekly_achievements(self, user_id: str, period_start: date) -> None:
         period_str = period_start.isoformat()
         docs_to_delete_stream = (
             self._collection
@@ -56,5 +51,7 @@ class AchievementRepository:
             .stream()
         )
         
-        for doc in docs_to_delete_stream:
-            doc.reference.delete()
+        async for doc in docs_to_delete_stream:
+            await doc.reference.delete()
+
+

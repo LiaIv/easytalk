@@ -1,21 +1,20 @@
-# backend/tests/routers/test_profile_router.py
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime, timezone
 
-from backend.domain.user import UserModel
-from backend.routers.profile_router import UpdateProfileRequest # Импортируем из роутера, т.к. там определена
-from backend.repositories.user_repository import UserRepository # Для мокирования
+from domain.user import UserModel
+from routers.profile_router import UpdateProfileRequest # Импортируем из роутера, т.к. там определена
+from repositories.user_repository import UserRepository # Для мокирования
+from shared.dependencies import get_user_repository
 
 # Путь к экземпляру user_repository в модуле profile_router
-USER_REPOSITORY_PATH = "backend.routers.profile_router.user_repository"
 TEST_USER_ID = "test_profile_user_123"
 
 # Фикстура для клиента с переопределенной авторизацией
 @pytest.fixture
 def client_with_auth_override(client: TestClient):
-    from backend.shared.auth import get_current_user_id
+    from shared.auth import get_current_user_id
     async def override_get_current_user_id():
         return TEST_USER_ID
     client.app.dependency_overrides[get_current_user_id] = override_get_current_user_id
@@ -25,9 +24,10 @@ def client_with_auth_override(client: TestClient):
 # --- Тесты для GET /api/profile ---
 
 @pytest.mark.asyncio
-async def test_get_profile_success_exists(client_with_auth_override: TestClient, monkeypatch):
+async def test_get_profile_success_exists(client_with_auth_override: TestClient):
     """Тест успешного получения существующего профиля GET /api/profile"""
     mock_repo = MagicMock(spec=UserRepository)
+    mock_repo.get_user = AsyncMock()
     
     expected_user_data = {
         "uid": TEST_USER_ID,
@@ -40,7 +40,7 @@ async def test_get_profile_success_exists(client_with_auth_override: TestClient,
     expected_user = UserModel(**expected_user_data)
     mock_repo.get_user = AsyncMock(return_value=expected_user)
     
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     response = client_with_auth_override.get("/api/profile")
 
@@ -55,11 +55,10 @@ async def test_get_profile_success_exists(client_with_auth_override: TestClient,
     assert response_json["created_at"] == expected_user.created_at.isoformat().replace("+00:00", "Z")
     
     mock_repo.get_user.assert_called_once_with(TEST_USER_ID)
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 @pytest.mark.asyncio
-async def test_get_profile_user_not_found( # Переименован
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_get_profile_user_not_found(client_with_auth_override: TestClient):
     """
     Тест GET /api/profile когда пользователь не существует.
     Ожидаем 404, так как профиль не найден.
@@ -67,7 +66,7 @@ async def test_get_profile_user_not_found( # Переименован
     mock_repo = MagicMock(spec=UserRepository)
     mock_repo.get_user = AsyncMock(return_value=None) # Пользователь не найден
     
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     response = client_with_auth_override.get("/api/profile")
 
@@ -76,6 +75,7 @@ async def test_get_profile_user_not_found( # Переименован
     assert response_json["detail"] == "User profile not found" # Новая проверка
     
     mock_repo.get_user.assert_called_once_with(TEST_USER_ID)
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 def test_get_profile_unauthorized(client: TestClient):
     """Тест получения профиля без авторизации GET /api/profile"""
@@ -84,15 +84,13 @@ def test_get_profile_unauthorized(client: TestClient):
     assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
 
 @pytest.mark.asyncio
-async def test_get_profile_repository_exception(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_get_profile_repository_exception(client_with_auth_override: TestClient):
     """Тест получения профиля при ошибке репозитория GET /api/profile"""
     mock_repo = MagicMock(spec=UserRepository)
     error_message = "Database connection error"
     mock_repo.get_user = AsyncMock(side_effect=RuntimeError(error_message))
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     response = client_with_auth_override.get("/api/profile")
 
@@ -104,14 +102,13 @@ async def test_get_profile_repository_exception(
     assert f"Failed to get user profile: {error_message}" == response_json["detail"]
     
     mock_repo.get_user.assert_called_once_with(TEST_USER_ID)
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 
 # --- Тесты для PUT /api/profile ---
 
 @pytest.mark.asyncio
-async def test_update_profile_success_full_update_existing_user(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_success_full_update_existing_user(client_with_auth_override: TestClient):
     """Тест успешного полного обновления существующего профиля PUT /api/profile"""
     mock_repo = MagicMock(spec=UserRepository)
     
@@ -127,7 +124,7 @@ async def test_update_profile_success_full_update_existing_user(
     mock_repo.get_user = AsyncMock(return_value=original_user)
     mock_repo.create_or_update_user = AsyncMock()
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {
         "display_name": "Updated Name",
@@ -158,12 +155,11 @@ async def test_update_profile_success_full_update_existing_user(
     assert str(called_with_user.photo_url) == update_payload["photo_url"]
     assert called_with_user.level == original_user.level
     assert called_with_user.created_at == original_user.created_at
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 
 @pytest.mark.asyncio
-async def test_update_profile_success_partial_update_existing_user(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_success_partial_update_existing_user(client_with_auth_override: TestClient):
     """Тест успешного частичного обновления существующего профиля PUT /api/profile"""
     mock_repo = MagicMock(spec=UserRepository)
     
@@ -179,7 +175,7 @@ async def test_update_profile_success_partial_update_existing_user(
     mock_repo.get_user = AsyncMock(return_value=original_user)
     mock_repo.create_or_update_user = AsyncMock()
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {
         "display_name": "Partial Updated Name"
@@ -207,18 +203,17 @@ async def test_update_profile_success_partial_update_existing_user(
     assert called_with_user.photo_url == original_user.photo_url
     assert called_with_user.level == original_user.level
     assert called_with_user.created_at == original_user.created_at
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 
 @pytest.mark.asyncio
-async def test_update_profile_success_new_user(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_success_new_user(client_with_auth_override: TestClient):
     """Тест успешного обновления (создания) профиля для нового пользователя PUT /api/profile"""
     mock_repo = MagicMock(spec=UserRepository)
     mock_repo.get_user = AsyncMock(return_value=None)
     mock_repo.create_or_update_user = AsyncMock()
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {
         "display_name": "New User Name",
@@ -248,6 +243,7 @@ async def test_update_profile_success_new_user(
     assert str(called_with_user.photo_url) == update_payload["photo_url"]
     assert called_with_user.level is None
     assert called_with_user.created_at is None
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 
 # --- Следующие тесты для PUT /api/profile (ошибки, авторизация) ---
@@ -260,13 +256,11 @@ def test_update_profile_unauthorized(client: TestClient):
     assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
 
 @pytest.mark.asyncio
-async def test_update_profile_validation_error_invalid_email(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_validation_error_invalid_email(client_with_auth_override: TestClient):
     """Тест обновления профиля с невалидным email PUT /api/profile (ожидаем 422)"""
     mock_repo = MagicMock(spec=UserRepository)
     mock_repo.get_user = AsyncMock(return_value=None)
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {"email": "not-a-valid-email"}
     response = client_with_auth_override.put("/api/profile", json=update_payload)
@@ -279,15 +273,14 @@ async def test_update_profile_validation_error_invalid_email(
     assert response_json["detail"][0]["type"] == "value_error"
     assert "email" in response_json["detail"][0]["loc"]
     assert "valid email address" in response_json["detail"][0]["msg"].lower()
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 @pytest.mark.asyncio
-async def test_update_profile_new_user_missing_email(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_new_user_missing_email(client_with_auth_override: TestClient):
     """Тест создания нового профиля без email PUT /api/profile (ожидаем 422)"""
     mock_repo = MagicMock(spec=UserRepository)
     mock_repo.get_user = AsyncMock(return_value=None) # Пользователя нет
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {"display_name": "New User Without Email"} # Нет email
     response = client_with_auth_override.put("/api/profile", json=update_payload)
@@ -300,18 +293,17 @@ async def test_update_profile_new_user_missing_email(
     assert response_json["detail"][0]["type"] == "missing"
     assert "email" in response_json["detail"][0]["loc"]
     assert "Field required for new user profile" in response_json["detail"][0]["msg"]
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 @pytest.mark.asyncio
-async def test_update_profile_get_user_exception(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_get_user_exception(client_with_auth_override: TestClient):
     """Тест обновления профиля, когда user_repository.get_user вызывает исключение"""
     mock_repo = MagicMock(spec=UserRepository)
     error_message = "Get user DB error"
     mock_repo.get_user = AsyncMock(side_effect=RuntimeError(error_message))
     mock_repo.create_or_update_user = AsyncMock()
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {"display_name": "Test Name", "email": "test@example.com"}
     response = client_with_auth_override.put("/api/profile", json=update_payload)
@@ -324,12 +316,11 @@ async def test_update_profile_get_user_exception(
     
     mock_repo.get_user.assert_called_once_with(TEST_USER_ID)
     mock_repo.create_or_update_user.assert_not_called()
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)
 
 
 @pytest.mark.asyncio
-async def test_update_profile_create_or_update_user_exception(
-    client_with_auth_override: TestClient, monkeypatch
-):
+async def test_update_profile_create_or_update_user_exception(client_with_auth_override: TestClient):
     """Тест обновления профиля, когда user_repository.create_or_update_user вызывает исключение"""
     mock_repo = MagicMock(spec=UserRepository)
     original_user_data = {
@@ -340,7 +331,7 @@ async def test_update_profile_create_or_update_user_exception(
     error_message = "Create/Update user DB error"
     mock_repo.create_or_update_user = AsyncMock(side_effect=RuntimeError(error_message))
 
-    monkeypatch.setattr(USER_REPOSITORY_PATH, mock_repo)
+    client_with_auth_override.app.dependency_overrides[get_user_repository] = lambda: mock_repo
 
     update_payload = {"display_name": "Test Name", "email": "another@example.com"}
     response = client_with_auth_override.put("/api/profile", json=update_payload)
@@ -353,3 +344,4 @@ async def test_update_profile_create_or_update_user_exception(
 
     mock_repo.get_user.assert_called_once_with(TEST_USER_ID)
     mock_repo.create_or_update_user.assert_called_once()
+    client_with_auth_override.app.dependency_overrides.pop(get_user_repository, None)

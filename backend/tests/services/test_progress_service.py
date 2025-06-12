@@ -1,13 +1,11 @@
-# backend/tests/services/test_progress_service.py
-
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, patch
 from datetime import date, datetime, timedelta
 from typing import List
 
-from backend.domain.progress import ProgressRecord
-from backend.repositories.progress_repository import ProgressRepository
-from backend.services.progress_service import ProgressService
+from domain.progress import ProgressRecord
+from repositories.progress_repository import ProgressRepository
+from services.progress_service import ProgressService
 
 
 class TestProgressService:
@@ -16,7 +14,7 @@ class TestProgressService:
     @pytest.fixture
     def progress_repository_mock(self):
         """Мок для ProgressRepository"""
-        mock = Mock(spec=ProgressRepository)
+        mock = AsyncMock(spec=ProgressRepository)
         return mock
 
     @pytest.fixture
@@ -56,7 +54,8 @@ class TestProgressService:
         
         return records
 
-    def test_record_progress(self, progress_service, progress_repository_mock):
+    @pytest.mark.asyncio
+    async def test_record_progress(self, progress_service, progress_repository_mock):
         """Тест сохранения прогресса пользователя"""
         # Подготовка данных
         user_id = "test_user_123"
@@ -67,7 +66,7 @@ class TestProgressService:
         test_date = date(2025, 6, 1)
         
         # Выполняем метод
-        progress_id = progress_service.record_progress(
+        progress_id = await progress_service.record_progress(
             user_id=user_id,
             score=score,
             correct_answers=correct_answers,
@@ -77,8 +76,8 @@ class TestProgressService:
         )
         
         # Проверяем, что метод репозитория вызван с правильными параметрами
-        progress_repository_mock.record_daily_score.assert_called_once()
-        record = progress_repository_mock.record_daily_score.call_args[0][0]
+        progress_repository_mock.record_daily_score.assert_awaited_once()
+        record = progress_repository_mock.record_daily_score.await_args.args[0]
         
         # Проверяем содержимое записи
         assert isinstance(record, ProgressRecord)
@@ -92,18 +91,19 @@ class TestProgressService:
         # Проверяем возвращаемый ID
         assert progress_id == f"{user_id}_{test_date.isoformat()}"
 
-    def test_record_progress_default_date(self, progress_service, progress_repository_mock):
+    @pytest.mark.asyncio
+    async def test_record_progress_default_date(self, progress_service, progress_repository_mock):
         """Тест сохранения прогресса пользователя с датой по умолчанию"""
         # Подготовка данных
         user_id = "test_user_123"
         score = 75
         
         # Выполняем метод без указания даты
-        with patch('backend.services.progress_service.date') as mock_date:
+        with patch('services.progress_service.date') as mock_date:
             today = date(2025, 6, 6)
             mock_date.today.return_value = today
             
-            progress_id = progress_service.record_progress(
+            progress_id = await progress_service.record_progress(
                 user_id=user_id,
                 score=score,
                 correct_answers=15,
@@ -117,7 +117,8 @@ class TestProgressService:
             # Проверяем возвращаемый ID с текущей датой
             assert progress_id == f"{user_id}_{today.isoformat()}"
 
-    def test_get_progress(self, progress_service, progress_repository_mock, sample_records_list):
+    @pytest.mark.asyncio
+    async def test_get_progress(self, progress_service, progress_repository_mock, sample_records_list):
         """Тест получения прогресса за период"""
         # Подготовка данных
         user_id = "test_user_123"
@@ -129,15 +130,15 @@ class TestProgressService:
         progress_repository_mock.get_progress.return_value = sample_records_list
         
         # Патчим метод date.today() для стабильности теста
-        with patch('backend.services.progress_service.date') as mock_date:
+        with patch('services.progress_service.date') as mock_date:
             mock_date.today.return_value = today
             
             # Выполняем тестируемый метод
-            result = progress_service.get_progress(user_id, days)
+            result = await progress_service.get_progress(user_id, days)
             
             # Проверяем вызов репозитория с правильными параметрами
-            progress_repository_mock.get_progress.assert_called_once()
-            args = progress_repository_mock.get_progress.call_args[0]
+            progress_repository_mock.get_progress.assert_awaited_once()
+            args = progress_repository_mock.get_progress.await_args.args
             assert args[0] == user_id
             assert args[1] == start_date.isoformat()
             assert args[2] == today.isoformat()

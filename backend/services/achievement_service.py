@@ -1,5 +1,3 @@
-# backend/services/achievement_service.py
-
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends
 from repositories.achievement_repository import AchievementRepository
@@ -17,12 +15,12 @@ class AchievementService:
         self._achievement_repo = achievement_repo
         self._progress_repo = progress_repo
 
-    def check_weekly_achievement(self, user_id: str) -> None:
+    async def check_weekly_achievement(self, user_id: str) -> None:
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        total = self._progress_repo.sum_scores_for_week(user_id, week_ago)
+        total = await self._progress_repo.sum_scores_for_week(user_id, week_ago)
         if total >= 50:
             week_start = week_ago.date()
-            if not self._achievement_repo.exists_weekly_achievement(user_id, week_start):
+            if not await self._achievement_repo.exists_weekly_achievement(user_id, week_start):
                 ach_id = str(uuid.uuid4())
                 achievement = AchievementModel(
                     achievement_id=ach_id,
@@ -31,4 +29,4 @@ class AchievementService:
                     earned_at=datetime.now(timezone.utc),
                     period_start_date=week_start
                 )
-                self._achievement_repo.create_achievement(achievement)
+                await self._achievement_repo.create_achievement(achievement)
