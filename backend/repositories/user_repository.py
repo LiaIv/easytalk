@@ -1,11 +1,11 @@
 # backend/repositories/user_repository.py
 
-from backend.shared.config import firestore_client
-from backend.domain.user import UserModel
+
+from domain.user import UserModel
 
 class UserRepository:
-    def __init__(self):
-        self._collection = firestore_client.collection("users")
+    def __init__(self, db):
+        self._collection = db.collection("users")
 
     def create_user(self, user: UserModel) -> None:
         # Используем model_dump с параметром mode="json", который превращает объекты в JSON-совместимые значения

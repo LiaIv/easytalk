@@ -1,16 +1,14 @@
 # backend/shared/auth.py
 
 from fastapi import Header, HTTPException, status, Depends
-import firebase_admin.auth
-from firebase_admin import auth
-from typing import Dict, Optional
+from firebase_admin import auth as firebase_auth_module # Переименовываем, чтобы избежать конфликта с переменной auth
 
-from backend.services.auth_service import AuthService
+from services.auth_service import AuthService
 
-# Инициализируем сервис аутентификации
-auth_service_instance = AuthService()
-
-async def get_current_user_id(authorization: str = Header(None)) -> str:
+async def get_current_user_id(
+    authorization: str = Header(None),
+    auth_service: AuthService = Depends(AuthService) # Внедряем AuthService напрямую
+) -> str:
     """
     Извлекает и верифицирует токен Firebase ID из заголовка Authorization.
     Возвращает UID пользователя в случае успеха.
@@ -41,9 +39,8 @@ async def get_current_user_id(authorization: str = Header(None)) -> str:
     token = parts[1]
     
     try:
-        # Используем auth_service_instance.verify_token
-        # Предполагается, что verify_token возвращает dict с 'uid' или None/выбрасывает исключение
-        user_payload = auth_service_instance.verify_token(token)
+        # Используем внедренный auth_service
+        user_payload = auth_service.verify_token(token)
         
         if user_payload and isinstance(user_payload, dict) and "uid" in user_payload:
             return user_payload["uid"]
@@ -52,10 +49,10 @@ async def get_current_user_id(authorization: str = Header(None)) -> str:
             # (например, в debug режиме без токена, если он не возвращает uid)
             # или если verify_token вернул None из-за ошибки валидации
             detail_message = "Invalid token or user ID not found in token payload."
-            if hasattr(auth_service_instance, 'DEBUG_MODE') and auth_service_instance.DEBUG_MODE and (token is None or token == "DEBUG_TOKEN"):
+            if hasattr(auth_service, 'DEBUG_MODE') and auth_service.DEBUG_MODE and (token is None or token == "DEBUG_TOKEN"):
                  # Если это debug режим и мы не получили uid, возможно, стоит вернуть тестовый uid
-                 if hasattr(auth_service_instance, 'TEST_USER_UID'):
-                     return auth_service_instance.TEST_USER_UID # Возвращаем тестовый UID, если он есть
+                 if hasattr(auth_service, 'TEST_USER_UID'):
+                     return auth_service.TEST_USER_UID # Возвращаем тестовый UID, если он есть
                  detail_message = "Debug mode active, but test user UID not configured in AuthService."
 
             raise HTTPException(
@@ -64,7 +61,7 @@ async def get_current_user_id(authorization: str = Header(None)) -> str:
                 headers={"WWW-Authenticate": "Bearer"},
             )
             
-    except firebase_admin.auth.InvalidIdTokenError as e:
+    except firebase_auth_module.InvalidIdTokenError as e: # Используем переименованный импорт
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Firebase ID token: {e}",

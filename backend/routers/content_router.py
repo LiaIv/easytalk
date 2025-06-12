@@ -5,8 +5,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel
 
-from backend.shared.auth import get_current_user_id
-from backend.shared.firebase_client import get_firestore
+from shared.auth import get_current_user_id
+from shared.dependencies import get_db # Импортируем get_db
+from google.cloud.firestore_v1.client import Client # Импортируем Client для тайп-хинта
 
 # Создаем роутер для контента
 router = APIRouter(prefix="/content", tags=["content"])
@@ -24,12 +25,11 @@ class AnimalContent(BaseModel):
 
 
 @router.get("/animals", response_model=List[AnimalContent])
-async def get_animals(
+async def get_animals(uid: str = Depends(get_current_user_id), db: Client = Depends(get_db),
     difficulty: Optional[int] = Query(
         None, ge=1, le=5, description="Фильтр по сложности (1-5)"
     ),
     limit: int = Query(50, ge=1, le=100, description="Максимальное количество записей"),
-    uid: str = Depends(get_current_user_id),
 ):
     """
     Получить список животных для игры "Угадай животное".
@@ -37,7 +37,6 @@ async def get_animals(
     Требуется токен авторизации.
     """
     try:
-        db = get_firestore()
         query = db.collection("content").document("animals").collection("items")
 
         if difficulty is not None:
@@ -47,7 +46,7 @@ async def get_animals(
         docs = query_with_limit.stream()
 
         result = []
-        async for doc in docs:
+        for doc in docs_iterator: # Используем синхронный итератор
             data = doc.to_dict()
             data["id"] = doc.id
             result.append(AnimalContent(**data))
@@ -62,7 +61,7 @@ async def get_animals(
 
 
 @router.get("/animals/{animal_id}", response_model=AnimalContent)
-async def get_animal_by_id(
+async def get_animal_by_id(db: Client = Depends(get_db),
     animal_id: str = Path(..., description="Идентификатор животного"),
     uid: str = Depends(get_current_user_id),
 ):
@@ -71,7 +70,6 @@ async def get_animal_by_id(
     Требуется токен авторизации.
     """
     try:
-        db = get_firestore()
         doc_ref = (
             db.collection("content")
             .document("animals")
@@ -110,7 +108,7 @@ class SentenceContent(BaseModel):
 
 
 @router.get("/sentences", response_model=List[SentenceContent])
-async def get_sentences(
+async def get_sentences(db: Client = Depends(get_db),
     difficulty: Optional[int] = Query(
         None, ge=1, le=5, description="Фильтр по сложности (1-5)"
     ),
@@ -123,7 +121,6 @@ async def get_sentences(
     Требуется токен авторизации.
     """
     try:
-        db = get_firestore()
         query = db.collection("content").document("sentences").collection("items")
 
         # Применяем фильтр по сложности, если указан

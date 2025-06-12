@@ -1,16 +1,17 @@
 # backend/repositories/session_repository.py
 
-from backend.shared.config import firestore_client
-from backend.domain.session import SessionModel, RoundDetail
+
+from domain.session import SessionModel, RoundDetail
 from google.cloud.firestore import WriteBatch
 from typing import List
 from datetime import datetime
 
 
 class SessionRepository:
-    def __init__(self):
-        # Коллекция Firestore, где храним документы сессий
-        self._collection = firestore_client.collection("sessions")
+    def __init__(self, db):
+        # Клиент Firestore передается через конструктор
+        self._db = db # Сохраняем клиент в self._db для использования в других методах
+        self._collection = self._db.collection("sessions")
 
     def create_session(self, session: SessionModel) -> None:
         """
@@ -39,7 +40,8 @@ class SessionRepository:
         - добавляет поля ended_at и score.
         Всё в атомарном WriteBatch.
         """
-        batch: WriteBatch = firestore_client.batch()
+        # Используем self._db для создания batch
+        batch: WriteBatch = self._db.batch()
         doc_ref = self._collection.document(session_id)
         batch.update(doc_ref, {
             "details": [d.model_dump(mode="json") for d in details],

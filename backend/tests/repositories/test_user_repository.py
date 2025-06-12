@@ -10,9 +10,9 @@ class TestUserRepository:
     """Тесты для UserRepository"""
     
     @pytest.fixture
-    def user_repository(self, firestore_client):
+    def user_repository(self, clean_firestore):
         """Фикстура создания репозитория пользователей с тестовым клиентом Firestore"""
-        return UserRepository()
+        return UserRepository(db=clean_firestore)
     
     @pytest.fixture
     def sample_user(self):
@@ -26,13 +26,13 @@ class TestUserRepository:
             created_at=datetime.now()
         )
     
-    def test_create_user(self, user_repository, sample_user, firestore_client):
+    def test_create_user(self, user_repository, sample_user, clean_firestore):
         """Тест создания пользователя в БД"""
         # Создаем пользователя
         user_repository.create_user(sample_user)
         
         # Проверяем, что пользователь был создан в Firestore
-        doc = firestore_client.collection("users").document(sample_user.uid).get()
+        doc = clean_firestore.collection("users").document(sample_user.uid).get()
         assert doc.exists
         user_data = doc.to_dict()
         assert user_data["uid"] == sample_user.uid
@@ -41,10 +41,10 @@ class TestUserRepository:
         # HttpUrl сериализуется как строка
         assert user_data["photo_url"] == str(sample_user.photo_url)
         
-    def test_get_user(self, user_repository, sample_user, firestore_client):
+    def test_get_user(self, user_repository, sample_user, clean_firestore):
         """Тест получения пользователя по ID"""
         # Создаем пользователя для теста
-        firestore_client.collection("users").document(sample_user.uid).set(
+        clean_firestore.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
@@ -62,10 +62,10 @@ class TestUserRepository:
         non_existent_user = user_repository.get_user("non_existent_uid")
         assert non_existent_user is None
         
-    def test_update_user(self, user_repository, sample_user, firestore_client):
+    def test_update_user(self, user_repository, sample_user, clean_firestore):
         """Тест обновления пользователя"""
         # Создаем пользователя для теста
-        firestore_client.collection("users").document(sample_user.uid).set(
+        clean_firestore.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
@@ -82,26 +82,26 @@ class TestUserRepository:
         user_repository.update_user(updated_user)
         
         # Получаем пользователя из БД и проверяем обновления
-        doc = firestore_client.collection("users").document(sample_user.uid).get()
+        doc = clean_firestore.collection("users").document(sample_user.uid).get()
         assert doc.exists
         user_data = doc.to_dict()
         assert user_data["display_name"] == "Updated Name"
         assert user_data["level"] == "intermediate"
         
-    def test_delete_user(self, user_repository, sample_user, firestore_client):
+    def test_delete_user(self, user_repository, sample_user, clean_firestore):
         """Тест удаления пользователя"""
         # Создаем пользователя для теста
-        firestore_client.collection("users").document(sample_user.uid).set(
+        clean_firestore.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
         # Проверяем, что пользователь существует
-        doc = firestore_client.collection("users").document(sample_user.uid).get()
+        doc = clean_firestore.collection("users").document(sample_user.uid).get()
         assert doc.exists
         
         # Удаляем пользователя
         user_repository.delete_user(sample_user.uid)
         
         # Проверяем, что пользователь был удален
-        doc = firestore_client.collection("users").document(sample_user.uid).get()
+        doc = clean_firestore.collection("users").document(sample_user.uid).get()
         assert not doc.exists

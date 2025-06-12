@@ -2,21 +2,23 @@
 
 import uuid
 from datetime import datetime, timezone
-from backend.domain.session import SessionModel, RoundDetail, SessionStatus
-from backend.repositories.session_repository import SessionRepository
-from backend.repositories.achievement_repository import AchievementRepository
-from backend.domain.achievement import AchievementModel, AchievementType
+from domain.session import SessionModel, RoundDetail, SessionStatus
+from domain.achievement import AchievementModel, AchievementType
+from fastapi import Depends
+from repositories.session_repository import SessionRepository
+from repositories.achievement_repository import AchievementRepository
+from shared.dependencies import get_session_repository, get_achievement_repository
 
 class SessionService:
     def __init__(
         self,
-        session_repo: SessionRepository,
-        achievement_repo: AchievementRepository
+        session_repo: SessionRepository = Depends(get_session_repository),
+        achievement_repo: AchievementRepository = Depends(get_achievement_repository)
     ):
         self._session_repo = session_repo
         self._achievement_repo = achievement_repo
 
-    def start_session(self, user_id: str, game_type: str) -> str:
+    async def start_session(self, user_id: str, game_type: str) -> str:
         session_id = str(uuid.uuid4())
         session = SessionModel(
             session_id=session_id,
@@ -30,7 +32,7 @@ class SessionService:
         self._session_repo.create_session(session)
         return session_id
 
-    def finish_session(
+    async def finish_session(
         self,
         session_id: str,
         user_id: str,

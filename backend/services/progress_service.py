@@ -2,13 +2,15 @@
 
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Any, Optional
-from backend.repositories.progress_repository import ProgressRepository
-from backend.domain.progress import ProgressRecord
-
+from fastapi import Depends
+from repositories.progress_repository import ProgressRepository
+from domain.progress import ProgressRecord
+from shared.dependencies import get_db, get_progress_repository # Для получения db
+from google.cloud.firestore_v1.client import Client as FirestoreClient # Для type hinting
 
 class ProgressService:
-    def __init__(self, progress_repo: ProgressRepository = None):
-        self._progress_repo = progress_repo if progress_repo else ProgressRepository()
+    def __init__(self, progress_repo: ProgressRepository = Depends(get_progress_repository)):
+        self._progress_repo = progress_repo
     
     def record_progress(
         self, 

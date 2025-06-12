@@ -60,3 +60,6 @@ htmlcov/
 # Другие файлы
 .DS_Store
 Thumbs.db
+serviceAccountKey.json
+shared/serviceAccountKey.json
+

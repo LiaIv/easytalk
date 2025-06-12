@@ -3,17 +3,17 @@
 import pytest
 from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
-from backend.domain.progress import ProgressRecord
-from backend.repositories.progress_repository import ProgressRepository
+from domain.progress import ProgressRecord
+from repositories.progress_repository import ProgressRepository
 
 
 class TestProgressRepository:
     """Тесты для репозитория прогресса пользователей"""
 
     @pytest.fixture
-    def progress_repository(self):
+    def progress_repository(self, clean_firestore):
         """Инициализируем репозиторий для тестов"""
-        return ProgressRepository()
+        return ProgressRepository(db=clean_firestore)
 
     @pytest.fixture
     def sample_progress_record(self):
@@ -27,7 +27,7 @@ class TestProgressRepository:
             time_spent=120.5  # 2 минуты 30 секунд
         )
 
-    def test_record_daily_score(self, progress_repository, sample_progress_record, firestore_client):
+    def test_record_daily_score(self, progress_repository, sample_progress_record, clean_firestore):
         """Тест записи дневного прогресса пользователя"""
         # Записываем прогресс
         progress_repository.record_daily_score(sample_progress_record)
@@ -36,7 +36,7 @@ class TestProgressRepository:
         doc_id = f"{sample_progress_record.user_id}_{sample_progress_record.date.isoformat()}"
         
         # Проверяем, что запись создана в Firestore
-        doc = firestore_client.collection("progress").document(doc_id).get()
+        doc = clean_firestore.collection("progress").document(doc_id).get()
         assert doc.exists
         
         # Проверяем данные в записи

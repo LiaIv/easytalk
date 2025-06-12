@@ -9,9 +9,9 @@ class TestSessionRepository:
     """Тесты для SessionRepository"""
 
     @pytest.fixture(scope="function")
-    def session_repository(self, firestore_client, clean_firestore):
+    def session_repository(self, clean_firestore):
         """Фикстура для создания экземпляра SessionRepository"""
-        return SessionRepository()
+        return SessionRepository(db=clean_firestore)
 
     @pytest.fixture(scope="function")
     def sample_session(self):
@@ -45,13 +45,13 @@ class TestSessionRepository:
             )
         ]
 
-    def test_create_session(self, session_repository, sample_session, firestore_client):
+    def test_create_session(self, session_repository, sample_session, clean_firestore):
         """Тест создания сессии в БД"""
         # Создаем сессию
         session_repository.create_session(sample_session)
         
         # Проверяем, что сессия создана в Firestore
-        doc = firestore_client.collection("sessions").document(sample_session.session_id).get()
+        doc = clean_firestore.collection("sessions").document(sample_session.session_id).get()
         assert doc.exists
         
         # Проверяем, что данные корректны
@@ -69,11 +69,11 @@ class TestSessionRepository:
         assert "score" not in session_data
         assert "details" not in session_data
     
-    def test_get_session(self, session_repository, sample_session, firestore_client):
+    def test_get_session(self, session_repository, sample_session, clean_firestore):
         """Тест получения сессии по ID"""
         # Создаем сессию для теста
         data = sample_session.model_dump(mode="json", exclude={"session_id", "ended_at", "score", "details"})
-        firestore_client.collection("sessions").document(sample_session.session_id).set(data)
+        clean_firestore.collection("sessions").document(sample_session.session_id).set(data)
         
         # Получаем сессию через репозиторий
         session = session_repository.get_session(sample_session.session_id)
@@ -92,11 +92,11 @@ class TestSessionRepository:
         # Проверяем, что результат None
         assert session is None
     
-    def test_update_session(self, session_repository, sample_session, sample_round_details, firestore_client):
+    def test_update_session(self, session_repository, sample_session, sample_round_details, clean_firestore):
         """Тест обновления сессии с деталями раундов"""
         # Создаем сессию для теста
         data = sample_session.model_dump(mode="json", exclude={"session_id", "end_time", "score", "details"})
-        firestore_client.collection("sessions").document(sample_session.session_id).set(data)
+        clean_firestore.collection("sessions").document(sample_session.session_id).set(data)
         
         # Обновляем сессию с деталями
         end_time = datetime.now()
@@ -109,7 +109,7 @@ class TestSessionRepository:
         )
         
         # Получаем обновленную сессию из БД
-        doc = firestore_client.collection("sessions").document(sample_session.session_id).get()
+        doc = clean_firestore.collection("sessions").document(sample_session.session_id).get()
         assert doc.exists
         
         # Проверяем, что данные обновлены корректно
