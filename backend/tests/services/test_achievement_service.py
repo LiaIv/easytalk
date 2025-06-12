@@ -1,13 +1,11 @@
-# functions/tests/services/test_achievement_service.py
-
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, patch
 from datetime import datetime, date, timedelta
 
-from backend.repositories.achievement_repository import AchievementRepository
-from backend.repositories.progress_repository import ProgressRepository
-from backend.services.achievement_service import AchievementService
-from backend.domain.achievement import AchievementModel, AchievementType
+from repositories.achievement_repository import AchievementRepository
+from repositories.progress_repository import ProgressRepository
+from services.achievement_service import AchievementService
+from domain.achievement import AchievementModel, AchievementType
 
 
 class TestAchievementService:
@@ -16,13 +14,13 @@ class TestAchievementService:
     @pytest.fixture
     def achievement_repository_mock(self):
         """Мок для AchievementRepository"""
-        mock = Mock(spec=AchievementRepository)
+        mock = AsyncMock(spec=AchievementRepository)
         return mock
 
     @pytest.fixture
     def progress_repository_mock(self):
         """Мок для ProgressRepository"""
-        mock = Mock(spec=ProgressRepository)
+        mock = AsyncMock(spec=ProgressRepository)
         return mock
 
     @pytest.fixture
@@ -33,8 +31,9 @@ class TestAchievementService:
             progress_repo=progress_repository_mock
         )
 
+    @pytest.mark.asyncio
     @patch('uuid.uuid4', return_value='achievement-uuid-123')
-    def test_check_weekly_achievement_earned(self, mock_uuid, achievement_service, 
+    async def test_check_weekly_achievement_earned(self, mock_uuid, achievement_service, 
                                            achievement_repository_mock, progress_repository_mock):
         """Тест проверки и создания еженедельного достижения, когда оно заработано"""
         user_id = "test_user_123"
@@ -44,23 +43,23 @@ class TestAchievementService:
         achievement_repository_mock.exists_weekly_achievement.return_value = False  # Достижение еще не существует
         
         # Вызываем тестируемый метод
-        achievement_service.check_weekly_achievement(user_id)
+        await achievement_service.check_weekly_achievement(user_id)
         
         # Проверяем, что вызвался метод sum_scores_for_week
-        progress_repository_mock.sum_scores_for_week.assert_called_once()
+        progress_repository_mock.sum_scores_for_week.assert_awaited_once()
         args = progress_repository_mock.sum_scores_for_week.call_args[0]
         assert args[0] == user_id
         assert isinstance(args[1], datetime)  # week_ago
         
         # Проверяем, что вызвался метод exists_weekly_achievement
-        achievement_repository_mock.exists_weekly_achievement.assert_called_once()
+        achievement_repository_mock.exists_weekly_achievement.assert_awaited_once()
         args = achievement_repository_mock.exists_weekly_achievement.call_args[0]
         assert args[0] == user_id
         assert isinstance(args[1], date)  # week_start
         
         # Проверяем, что достижение было создано
-        achievement_repository_mock.create_achievement.assert_called_once()
-        achievement = achievement_repository_mock.create_achievement.call_args[0][0]
+        achievement_repository_mock.create_achievement.assert_awaited_once()
+        achievement = achievement_repository_mock.create_achievement.await_args.args[0]
         assert isinstance(achievement, AchievementModel)
         assert achievement.achievement_id == "achievement-uuid-123"
         assert achievement.user_id == user_id
@@ -68,7 +67,8 @@ class TestAchievementService:
         assert isinstance(achievement.earned_at, datetime)
         assert isinstance(achievement.period_start_date, date)
 
-    def test_check_weekly_achievement_not_enough_score(self, achievement_service, 
+    @pytest.mark.asyncio
+    async def test_check_weekly_achievement_not_enough_score(self, achievement_service, 
                                                      achievement_repository_mock, progress_repository_mock):
         """Тест проверки недостаточного количества очков для еженедельного достижения"""
         user_id = "test_user_123"
@@ -77,18 +77,19 @@ class TestAchievementService:
         progress_repository_mock.sum_scores_for_week.return_value = 30  # Меньше 50, не должно создать достижение
         
         # Вызываем тестируемый метод
-        achievement_service.check_weekly_achievement(user_id)
+        await achievement_service.check_weekly_achievement(user_id)
         
         # Проверяем, что вызвался метод sum_scores_for_week
-        progress_repository_mock.sum_scores_for_week.assert_called_once()
+        progress_repository_mock.sum_scores_for_week.assert_awaited_once()
         
         # Проверяем, что метод exists_weekly_achievement не вызывался
-        achievement_repository_mock.exists_weekly_achievement.assert_not_called()
+        achievement_repository_mock.exists_weekly_achievement.assert_not_awaited()
         
         # Проверяем, что достижение не было создано
-        achievement_repository_mock.create_achievement.assert_not_called()
+        achievement_repository_mock.create_achievement.assert_not_awaited()
 
-    def test_check_weekly_achievement_already_exists(self, achievement_service, 
+    @pytest.mark.asyncio
+    async def test_check_weekly_achievement_already_exists(self, achievement_service, 
                                                    achievement_repository_mock, progress_repository_mock):
         """Тест проверки случая, когда еженедельное достижение уже существует"""
         user_id = "test_user_123"
@@ -98,13 +99,13 @@ class TestAchievementService:
         achievement_repository_mock.exists_weekly_achievement.return_value = True  # Но достижение уже существует
         
         # Вызываем тестируемый метод
-        achievement_service.check_weekly_achievement(user_id)
+        await achievement_service.check_weekly_achievement(user_id)
         
         # Проверяем, что вызвался метод sum_scores_for_week
-        progress_repository_mock.sum_scores_for_week.assert_called_once()
+        progress_repository_mock.sum_scores_for_week.assert_awaited_once()
         
         # Проверяем, что вызвался метод exists_weekly_achievement
-        achievement_repository_mock.exists_weekly_achievement.assert_called_once()
+        achievement_repository_mock.exists_weekly_achievement.assert_awaited_once()
         
         # Проверяем, что достижение не было создано (т.к. оно уже существует)
-        achievement_repository_mock.create_achievement.assert_not_called()
+        achievement_repository_mock.create_achievement.assert_not_awaited()

@@ -3,15 +3,16 @@ import pytest
 from datetime import datetime
 from domain.session import SessionModel, RoundDetail, SessionStatus
 from repositories.session_repository import SessionRepository
+from unittest.mock import AsyncMock, MagicMock
 
 
 class TestSessionRepository:
     """Тесты для SessionRepository"""
 
     @pytest.fixture(scope="function")
-    def session_repository(self, clean_firestore):
+    def session_repository(self, clean_firestore_async):
         """Фикстура для создания экземпляра SessionRepository"""
-        return SessionRepository(db=clean_firestore)
+        return SessionRepository(db=clean_firestore_async)
 
     @pytest.fixture(scope="function")
     def sample_session(self):
@@ -45,13 +46,14 @@ class TestSessionRepository:
             )
         ]
 
-    def test_create_session(self, session_repository, sample_session, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_create_session(self, session_repository, sample_session, clean_firestore_async):
         """Тест создания сессии в БД"""
         # Создаем сессию
-        session_repository.create_session(sample_session)
+        await session_repository.create_session(sample_session)
         
         # Проверяем, что сессия создана в Firestore
-        doc = clean_firestore.collection("sessions").document(sample_session.session_id).get()
+        doc = await clean_firestore_async.collection("sessions").document(sample_session.session_id).get()
         assert doc.exists
         
         # Проверяем, что данные корректны
@@ -69,14 +71,15 @@ class TestSessionRepository:
         assert "score" not in session_data
         assert "details" not in session_data
     
-    def test_get_session(self, session_repository, sample_session, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_get_session(self, session_repository, sample_session, clean_firestore_async):
         """Тест получения сессии по ID"""
         # Создаем сессию для теста
-        data = sample_session.model_dump(mode="json", exclude={"session_id", "ended_at", "score", "details"})
-        clean_firestore.collection("sessions").document(sample_session.session_id).set(data)
+        data = sample_session.model_dump(mode="json", exclude={"session_id", "end_time", "score", "details"})
+        await clean_firestore_async.collection("sessions").document(sample_session.session_id).set(data)
         
         # Получаем сессию через репозиторий
-        session = session_repository.get_session(sample_session.session_id)
+        session = await session_repository.get_session(sample_session.session_id)
         
         # Проверяем, что сессия получена корректно
         assert session is not None
@@ -84,24 +87,26 @@ class TestSessionRepository:
         assert session.user_id == sample_session.user_id
         assert session.game_type == sample_session.game_type
     
-    def test_get_session_not_found(self, session_repository):
+    @pytest.mark.asyncio
+    async def test_get_session_not_found(self, session_repository):
         """Тест получения несуществующей сессии"""
         # Пытаемся получить несуществующую сессию
-        session = session_repository.get_session("non_existent_session")
+        session = await session_repository.get_session("non_existent_session")
         
         # Проверяем, что результат None
         assert session is None
     
-    def test_update_session(self, session_repository, sample_session, sample_round_details, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_update_session(self, session_repository, sample_session, sample_round_details, clean_firestore_async):
         """Тест обновления сессии с деталями раундов"""
         # Создаем сессию для теста
         data = sample_session.model_dump(mode="json", exclude={"session_id", "end_time", "score", "details"})
-        clean_firestore.collection("sessions").document(sample_session.session_id).set(data)
+        await clean_firestore_async.collection("sessions").document(sample_session.session_id).set(data)
         
         # Обновляем сессию с деталями
         end_time = datetime.now()
         score = 10
-        session_repository.update_session(
+        await session_repository.update_session(
             sample_session.session_id,
             sample_round_details,
             end_time,
@@ -109,7 +114,7 @@ class TestSessionRepository:
         )
         
         # Получаем обновленную сессию из БД
-        doc = clean_firestore.collection("sessions").document(sample_session.session_id).get()
+        doc = await clean_firestore_async.collection("sessions").document(sample_session.session_id).get()
         assert doc.exists
         
         # Проверяем, что данные обновлены корректно

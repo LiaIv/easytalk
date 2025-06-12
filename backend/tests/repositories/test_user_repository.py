@@ -4,15 +4,15 @@ import pytest
 from datetime import datetime
 from domain.user import UserModel
 from repositories.user_repository import UserRepository
-from google.cloud.firestore import Client
+from unittest.mock import AsyncMock, MagicMock
 
 class TestUserRepository:
     """Тесты для UserRepository"""
     
     @pytest.fixture
-    def user_repository(self, clean_firestore):
+    def user_repository(self, clean_firestore_async):
         """Фикстура создания репозитория пользователей с тестовым клиентом Firestore"""
-        return UserRepository(db=clean_firestore)
+        return UserRepository(db=clean_firestore_async)
     
     @pytest.fixture
     def sample_user(self):
@@ -26,13 +26,14 @@ class TestUserRepository:
             created_at=datetime.now()
         )
     
-    def test_create_user(self, user_repository, sample_user, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_create_user(self, user_repository, sample_user, clean_firestore_async):
         """Тест создания пользователя в БД"""
         # Создаем пользователя
-        user_repository.create_user(sample_user)
+        await user_repository.create_user(sample_user)
         
         # Проверяем, что пользователь был создан в Firestore
-        doc = clean_firestore.collection("users").document(sample_user.uid).get()
+        doc = await clean_firestore_async.collection("users").document(sample_user.uid).get()
         assert doc.exists
         user_data = doc.to_dict()
         assert user_data["uid"] == sample_user.uid
@@ -41,15 +42,16 @@ class TestUserRepository:
         # HttpUrl сериализуется как строка
         assert user_data["photo_url"] == str(sample_user.photo_url)
         
-    def test_get_user(self, user_repository, sample_user, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_get_user(self, user_repository, sample_user, clean_firestore_async):
         """Тест получения пользователя по ID"""
         # Создаем пользователя для теста
-        clean_firestore.collection("users").document(sample_user.uid).set(
+        await clean_firestore_async.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
         # Получаем пользователя
-        retrieved_user = user_repository.get_user(sample_user.uid)
+        retrieved_user = await user_repository.get_user(sample_user.uid)
         
         # Проверяем полученного пользователя
         assert retrieved_user is not None
@@ -57,15 +59,17 @@ class TestUserRepository:
         assert retrieved_user.email == sample_user.email
         assert retrieved_user.display_name == sample_user.display_name
         
-    def test_get_user_not_found(self, user_repository):
+    @pytest.mark.asyncio
+    async def test_get_user_not_found(self, user_repository):
         """Тест получения несуществующего пользователя"""
-        non_existent_user = user_repository.get_user("non_existent_uid")
+        non_existent_user = await user_repository.get_user("non_existent_uid")
         assert non_existent_user is None
         
-    def test_update_user(self, user_repository, sample_user, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_update_user(self, user_repository, sample_user, clean_firestore_async):
         """Тест обновления пользователя"""
         # Создаем пользователя для теста
-        clean_firestore.collection("users").document(sample_user.uid).set(
+        await clean_firestore_async.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
@@ -79,29 +83,30 @@ class TestUserRepository:
             created_at=sample_user.created_at  # created_at не должен обновиться
         )
         
-        user_repository.update_user(updated_user)
+        await user_repository.update_user(updated_user)
         
         # Получаем пользователя из БД и проверяем обновления
-        doc = clean_firestore.collection("users").document(sample_user.uid).get()
+        doc = await clean_firestore_async.collection("users").document(sample_user.uid).get()
         assert doc.exists
         user_data = doc.to_dict()
         assert user_data["display_name"] == "Updated Name"
         assert user_data["level"] == "intermediate"
         
-    def test_delete_user(self, user_repository, sample_user, clean_firestore):
+    @pytest.mark.asyncio
+    async def test_delete_user(self, user_repository, sample_user, clean_firestore_async):
         """Тест удаления пользователя"""
         # Создаем пользователя для теста
-        clean_firestore.collection("users").document(sample_user.uid).set(
+        await clean_firestore_async.collection("users").document(sample_user.uid).set(
             sample_user.model_dump(mode="json")
         )
         
         # Проверяем, что пользователь существует
-        doc = clean_firestore.collection("users").document(sample_user.uid).get()
+        doc = await clean_firestore_async.collection("users").document(sample_user.uid).get()
         assert doc.exists
         
         # Удаляем пользователя
-        user_repository.delete_user(sample_user.uid)
+        await user_repository.delete_user(sample_user.uid)
         
         # Проверяем, что пользователь был удален
-        doc = clean_firestore.collection("users").document(sample_user.uid).get()
+        doc = await clean_firestore_async.collection("users").document(sample_user.uid).get()
         assert not doc.exists

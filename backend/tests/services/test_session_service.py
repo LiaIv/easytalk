@@ -1,15 +1,13 @@
-# backend/tests/services/test_session_service.py
-
 import pytest
 from datetime import datetime
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, patch
 
-from backend.domain.session import SessionModel, RoundDetail, SessionStatus
-from backend.domain.achievement import AchievementModel, AchievementType
-from backend.repositories.session_repository import SessionRepository
-from backend.repositories.achievement_repository import AchievementRepository
-from backend.services.session_service import SessionService
+from domain.session import SessionModel, RoundDetail, SessionStatus
+from domain.achievement import AchievementModel, AchievementType
+from repositories.session_repository import SessionRepository
+from repositories.achievement_repository import AchievementRepository
+from services.session_service import SessionService
 
 
 class TestSessionService:
@@ -18,13 +16,13 @@ class TestSessionService:
     @pytest.fixture
     def session_repository_mock(self):
         """Мок для SessionRepository"""
-        mock = Mock(spec=SessionRepository)
+        mock = AsyncMock(spec=SessionRepository)
         return mock
 
     @pytest.fixture
     def achievement_repository_mock(self):
         """Мок для AchievementRepository"""
-        mock = Mock(spec=AchievementRepository)
+        mock = AsyncMock(spec=AchievementRepository)
         return mock
 
     @pytest.fixture
@@ -58,23 +56,24 @@ class TestSessionService:
             ))
         return details
 
+    @pytest.mark.asyncio
     @patch('uuid.uuid4', return_value='test-uuid-123')
-    def test_start_session(self, mock_uuid, session_service, session_repository_mock):
+    async def test_start_session(self, mock_uuid, session_service, session_repository_mock):
         """Тест создания новой сессии"""
         user_id = "test_user_123"
         game_type = "guess_animal"
         
         # Вызываем тестируемый метод
-        session_id = session_service.start_session(user_id, game_type)
+        session_id = await session_service.start_session(user_id, game_type)
         
         # Проверяем, что вернулся ожидаемый ID
         assert session_id == "test-uuid-123"
         
         # Проверяем, что репозиторий вызван с правильными параметрами
-        session_repository_mock.create_session.assert_called_once()
+        session_repository_mock.create_session.assert_awaited_once()
         
         # Проверяем параметры, переданные в метод create_session
-        called_session = session_repository_mock.create_session.call_args[0][0]
+        called_session = session_repository_mock.create_session.await_args.args[0]
         assert isinstance(called_session, SessionModel)
         assert called_session.session_id == session_id
         assert called_session.user_id == user_id
@@ -85,7 +84,8 @@ class TestSessionService:
         assert isinstance(called_session.start_time, datetime)
         assert called_session.end_time is None
 
-    def test_finish_session_without_achievement(
+    @pytest.mark.asyncio
+    async def test_finish_session_without_achievement(
         self, session_service, session_repository_mock, achievement_repository_mock, 
         sample_round_details_some_incorrect
     ):
@@ -95,21 +95,22 @@ class TestSessionService:
         score = 80
         
         # Вызываем тестируемый метод
-        session_service.finish_session(session_id, user_id, sample_round_details_some_incorrect, score)
+        await session_service.finish_session(session_id, user_id, sample_round_details_some_incorrect, score)
         
         # Проверяем, что update_session вызван с правильными параметрами
-        session_repository_mock.update_session.assert_called_once()
-        args = session_repository_mock.update_session.call_args[0]
+        session_repository_mock.update_session.assert_awaited_once()
+        args = session_repository_mock.update_session.await_args.args
         assert args[0] == session_id
         assert args[1] == sample_round_details_some_incorrect
         assert isinstance(args[2], datetime)  # end_time
         assert args[3] == score
         
         # Проверяем, что create_achievement не вызывался
-        achievement_repository_mock.create_achievement.assert_not_called()
+        achievement_repository_mock.create_achievement.assert_not_awaited()
 
+    @pytest.mark.asyncio
     @patch('uuid.uuid4', return_value='achievement-uuid-123')
-    def test_finish_session_with_achievement(
+    async def test_finish_session_with_achievement(
         self, mock_uuid, session_service, session_repository_mock, 
         achievement_repository_mock, sample_round_details_all_correct
     ):
@@ -119,19 +120,19 @@ class TestSessionService:
         score = 100
         
         # Вызываем тестируемый метод
-        session_service.finish_session(session_id, user_id, sample_round_details_all_correct, score)
+        await session_service.finish_session(session_id, user_id, sample_round_details_all_correct, score)
         
         # Проверяем, что update_session вызван с правильными параметрами
-        session_repository_mock.update_session.assert_called_once()
-        args = session_repository_mock.update_session.call_args[0]
+        session_repository_mock.update_session.assert_awaited_once()
+        args = session_repository_mock.update_session.await_args.args
         assert args[0] == session_id
         assert args[1] == sample_round_details_all_correct
         assert isinstance(args[2], datetime)  # end_time
         assert args[3] == score
         
         # Проверяем, что create_achievement вызван с правильными параметрами
-        achievement_repository_mock.create_achievement.assert_called_once()
-        achievement = achievement_repository_mock.create_achievement.call_args[0][0]
+        achievement_repository_mock.create_achievement.assert_awaited_once()
+        achievement = achievement_repository_mock.create_achievement.await_args.args[0]
         assert isinstance(achievement, AchievementModel)
         assert achievement.achievement_id == "achievement-uuid-123"
         assert achievement.user_id == user_id

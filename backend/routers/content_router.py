@@ -1,5 +1,3 @@
-# backend/routers/content_router.py
-
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -46,7 +44,7 @@ async def get_animals(uid: str = Depends(get_current_user_id), db: Client = Depe
         docs = query_with_limit.stream()
 
         result = []
-        for doc in docs_iterator: # Используем синхронный итератор
+        for doc in docs:  # Синхронный итератор Firestore
             data = doc.to_dict()
             data["id"] = doc.id
             result.append(AnimalContent(**data))

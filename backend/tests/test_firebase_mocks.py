@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI, Depends
 
 # Импортируем напрямую из functions
-from backend.routers.content_router import router as content_router, get_animal_by_id
-from backend.shared.auth import get_current_user_id
+from routers.content_router import router as content_router, get_animal_by_id
+from shared.auth import get_current_user_id
 
 # Константы
 TEST_USER_ID = "test_user_123"
@@ -71,9 +71,9 @@ async def test_get_animal_by_id_success():
     db_mock = setup_firestore_mock()
     
     # Замена реальной функции получения Firestore на мок
-    import backend.routers.content_router
-    old_get_firestore = backend.routers.content_router.get_firestore
-    backend.routers.content_router.get_firestore = lambda: db_mock
+    import routers.content_router as content_router_module
+    old_get_firestore = content_router_module.get_firestore
+    content_router_module.get_firestore = lambda: db_mock
     
     try:
         # Вызываем функцию напрямую, без использования TestClient
@@ -92,7 +92,7 @@ async def test_get_animal_by_id_success():
         return False
     finally:
         # Восстанавливаем оригинальную функцию
-        backend.routers.content_router.get_firestore = old_get_firestore
+        content_router_module.get_firestore = old_get_firestore
 
 # Функция для имитации Firestore ошибки при получении .stream()
 @pytest.mark.asyncio

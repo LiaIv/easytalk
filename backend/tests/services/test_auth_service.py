@@ -1,8 +1,6 @@
-# backend/tests/services/test_auth_service.py
-
 import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
 import os
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
 from domain.user import UserModel
@@ -17,12 +15,12 @@ class TestAuthService:
     @pytest.fixture
     def db_mock(self):
         """Мок для Firestore Client"""
-        return Mock(spec=Client)
+        return AsyncMock(spec=Client)
 
     @pytest.fixture
     def user_repository_mock(self):
         """Мок для UserRepository. Используется для проверки вызовов к нему."""
-        return Mock(spec=UserRepository)
+        return AsyncMock(spec=UserRepository)
 
     @pytest.fixture
     def auth_service(self, db_mock, user_repository_mock):
@@ -32,8 +30,9 @@ class TestAuthService:
             service = AuthService(db=db_mock)
             return service
 
+    @pytest.mark.asyncio
     @patch('firebase_admin.auth.create_user')
-    def test_register_user(self, mock_create_user, auth_service, user_repository_mock):
+    async def test_register_user(self, mock_create_user, auth_service, user_repository_mock):
         """Тест регистрации нового пользователя"""
         # Подготовка тестовых данных
         email = "test@example.com"
@@ -47,7 +46,7 @@ class TestAuthService:
         mock_create_user.return_value = user_record
         
         # Вызываем тестируемый метод
-        user = auth_service.register_user(email, password, display_name, level)
+        user = await auth_service.register_user(email, password, display_name, level)
         
         # Проверяем, что Firebase Auth был вызван с правильными параметрами
         mock_create_user.assert_called_once_with(
@@ -57,7 +56,7 @@ class TestAuthService:
         )
         
         # Проверяем, что репозиторий был вызван для сохранения пользователя
-        user_repository_mock.create_user.assert_called_once()
+        user_repository_mock.create_user.assert_awaited_once()
         
         # Проверяем, что пользователь создан с правильными данными
         assert user.uid == user_record.uid
@@ -67,9 +66,10 @@ class TestAuthService:
         assert user.level == level
         assert isinstance(user.created_at, datetime)
 
+    @pytest.mark.asyncio
     @patch('firebase_admin.auth.verify_id_token')
     @patch('os.environ.get')
-    def test_verify_token_normal_mode(self, mock_env_get, mock_verify_token, auth_service):
+    async def test_verify_token_normal_mode(self, mock_env_get, mock_verify_token, auth_service):
         """Тест верификации токена в обычном режиме (не debug)"""
         # Настройка окружения - не debug
         mock_env_get.return_value = 'False'
@@ -80,7 +80,7 @@ class TestAuthService:
         mock_verify_token.return_value = decoded_token
         
         # Вызываем тестируемый метод
-        uid = auth_service.verify_token(token)
+        uid = await auth_service.verify_token(token)
         
         # Проверяем, что Firebase Auth был вызван с токеном
         mock_verify_token.assert_called_once_with(token)
@@ -88,16 +88,17 @@ class TestAuthService:
         # Проверяем, что вернулся правильный UID
         assert uid == decoded_token["uid"]
 
+    @pytest.mark.asyncio
     @patch('firebase_admin.auth.verify_id_token')
     @patch('os.environ.get')
-    def test_verify_token_debug_mode_with_token(self, mock_env_get, mock_verify_token, auth_service):
+    async def test_verify_token_debug_mode_with_token(self, mock_env_get, mock_verify_token, auth_service):
         """Тест верификации токена в режиме debug с переданным токеном"""
         # Настройка окружения - debug
         mock_env_get.return_value = 'True'
         
         # Вызываем тестируемый метод
         token = "debug_token_123"
-        uid = auth_service.verify_token(token)
+        uid = await auth_service.verify_token(token)
         
         # Проверяем, что Firebase Auth НЕ был вызван
         mock_verify_token.assert_not_called()
@@ -105,15 +106,16 @@ class TestAuthService:
         # Проверяем, что возвращен тот же токен
         assert uid == token
 
+    @pytest.mark.asyncio
     @patch('firebase_admin.auth.verify_id_token')
     @patch('os.environ.get')
-    def test_verify_token_debug_mode_without_token(self, mock_env_get, mock_verify_token, auth_service):
+    async def test_verify_token_debug_mode_without_token(self, mock_env_get, mock_verify_token, auth_service):
         """Тест верификации токена в режиме debug без токена"""
         # Настройка окружения - debug
         mock_env_get.return_value = 'True'
         
         # Вызываем тестируемый метод с пустым токеном
-        uid = auth_service.verify_token(None)
+        uid = await auth_service.verify_token(None)
         
         # Проверяем, что Firebase Auth НЕ был вызван
         mock_verify_token.assert_not_called()
@@ -121,9 +123,10 @@ class TestAuthService:
         # Проверяем, что возвращен тестовый ID
         assert uid == 'test_user_id'
 
+    @pytest.mark.asyncio
     @patch('firebase_admin.auth.verify_id_token')
     @patch('os.environ.get')
-    def test_verify_token_error(self, mock_env_get, mock_verify_token, auth_service):
+    async def test_verify_token_error(self, mock_env_get, mock_verify_token, auth_service):
         """Тест обработки ошибки при верификации токена"""
         # Настройка окружения - не debug
         mock_env_get.return_value = 'False'
@@ -134,7 +137,7 @@ class TestAuthService:
         
         # Проверяем, что метод выбрасывает исключение
         with pytest.raises(Exception) as e:
-            auth_service.verify_token(token)
+            await auth_service.verify_token(token)
             
         # Проверяем сообщение об ошибке
         assert "Token verification failed" in str(e)

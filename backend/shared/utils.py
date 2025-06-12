@@ -1,5 +1,3 @@
-# backend/shared/utils.py
-
 import datetime
 import pytz
 from typing import Any, Dict, List, Optional

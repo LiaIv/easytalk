@@ -1,5 +1,3 @@
-# backend/services/session_service.py
-
 import uuid
 from datetime import datetime, timezone
 from domain.session import SessionModel, RoundDetail, SessionStatus
@@ -29,7 +27,7 @@ class SessionService:
             score=0,
             details=[]
         )
-        self._session_repo.create_session(session)
+        await self._session_repo.create_session(session)
         return session_id
 
     async def finish_session(
@@ -40,7 +38,7 @@ class SessionService:
         score: int
     ) -> None:
         end_time = datetime.now(timezone.utc)
-        self._session_repo.update_session(session_id, details, end_time, score)
+        await self._session_repo.update_session(session_id, details, end_time, score)
 
         # Правило «10 правильных подряд»
         if all(detail.is_correct for detail in details):
@@ -52,4 +50,4 @@ class SessionService:
                 earned_at=datetime.now(timezone.utc),
                 session_id=session_id
             )
-            self._achievement_repo.create_achievement(achievement)
+            await self._achievement_repo.create_achievement(achievement)
