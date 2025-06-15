@@ -1,0 +1,39 @@
+@startuml
+title Регистрация и управление токенами (iOS + Firebase Auth SDK)
+
+actor Пользователь
+participant "Клиент (iOS App)" as Client
+participant "Firebase Auth SDK\n(iOS)" as SDK
+participant "Firebase Auth REST API\nidentitytoolkit.googleapis.com" as AuthAPI
+participant "Keychain Secure Storage" as Keychain
+participant "Secure Token API\nsecuretoken.googleapis.com" as TokenAPI
+
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+== Регистрация / Создание пользователя ==
+Пользователь -> Client: Вводит Email и Пароль
+Client -> SDK: createUser(email, password)
+SDK -> AuthAPI: HTTPS POST /v1/accounts:signUp?key=API_KEY\n{ email, password, returnSecureToken=true }
+note right: Параметры:\n- email\n- password\n- returnSecureToken=true
+AuthAPI --> SDK: { idToken (JWT), refreshToken,\n expiresIn (3600), localId }
+note right: idToken — JWT (RS256),\nподписан Google,\nвалид ~1 час
+SDK -> Keychain: Сохраняет refreshToken\nи (optionally) idToken безопасно
+SDK --> Client: Success (User.uid, email)
+Client -> Пользователь: Показывает экран\n"Выбор уровня сложности"
+
+== Использование idToken ==
+Client -> SDK: Получить idToken для запроса
+SDK -> Keychain: Читает idToken
+SDK --> Client: idToken
+Client --> BackendServer: HTTP запросы\nAuthorization: Bearer idToken
+
+== Автообновление токена ==
+Client <-- SDK: idToken истек / 401 от Backend
+SDK -> Keychain: Читает refreshToken
+SDK -> TokenAPI: HTTPS POST /v1/token?key=API_KEY\n{ grant_type=refresh_token,\n  refresh_token=refreshToken }
+TokenAPI --> SDK: { id_token, refresh_token,\n  expires_in }
+SDK -> Keychain: Обновляет idToken,\nrefreshToken
+SDK --> Client: Новый idToken (прозрачно)
+
+@enduml
