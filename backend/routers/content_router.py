@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel
 
 from shared.auth import get_current_user_id
-from shared.dependencies import get_db # Импортируем get_db
-from google.cloud.firestore_v1.client import Client # Импортируем Client для тайп-хинта
+from shared.dependencies import get_db
+from google.cloud.firestore_v1.async_client import AsyncClient  # Async Firestore client
 
 # Создаем роутер для контента
 router = APIRouter(prefix="/content", tags=["content"])
@@ -23,7 +23,7 @@ class AnimalContent(BaseModel):
 
 
 @router.get("/animals", response_model=List[AnimalContent])
-async def get_animals(uid: str = Depends(get_current_user_id), db: Client = Depends(get_db),
+async def get_animals(uid: str = Depends(get_current_user_id), db: AsyncClient = Depends(get_db),
     difficulty: Optional[int] = Query(
         None, ge=1, le=5, description="Фильтр по сложности (1-5)"
     ),
@@ -41,10 +41,9 @@ async def get_animals(uid: str = Depends(get_current_user_id), db: Client = Depe
             query = query.where("difficulty", "==", difficulty)
 
         query_with_limit = query.limit(limit)
-        docs = query_with_limit.stream()
 
-        result = []
-        for doc in docs:  # Синхронный итератор Firestore
+        result: List[AnimalContent] = []
+        async for doc in query_with_limit.stream():  # Асинхронный итератор Firestore
             data = doc.to_dict()
             data["id"] = doc.id
             result.append(AnimalContent(**data))
@@ -59,7 +58,7 @@ async def get_animals(uid: str = Depends(get_current_user_id), db: Client = Depe
 
 
 @router.get("/animals/{animal_id}", response_model=AnimalContent)
-async def get_animal_by_id(db: Client = Depends(get_db),
+async def get_animal_by_id(db: AsyncClient = Depends(get_db),
     animal_id: str = Path(..., description="Идентификатор животного"),
     uid: str = Depends(get_current_user_id),
 ):
@@ -106,7 +105,7 @@ class SentenceContent(BaseModel):
 
 
 @router.get("/sentences", response_model=List[SentenceContent])
-async def get_sentences(db: Client = Depends(get_db),
+async def get_sentences(db: AsyncClient = Depends(get_db),
     difficulty: Optional[int] = Query(
         None, ge=1, le=5, description="Фильтр по сложности (1-5)"
     ),

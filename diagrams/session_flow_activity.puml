@@ -1,0 +1,139 @@
+@startuml
+title Прохождение игровой сессии
+
+' --- Стили для улучшения читаемости ---
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #F7F7F7
+  BorderColor #C0C0C0
+  ArrowColor #505050
+  FontName Segoe UI
+  FontSize 12
+}
+skinparam note {
+  BackgroundColor #FFFFE1
+  BorderColor #C0C0C0
+  FontName Segoe UI
+  FontSize 11
+}
+skinparam partition {
+  BackgroundColor #EFEFEF
+  BorderColor #A0A0A0
+  TitleFontSize 14
+  FontName Segoe UI
+}
+skinparam swimlane {
+  TitleFontSize 16
+  TitleFontColor #333333
+  BorderColor #888888
+  BorderThickness 2
+}
+
+' --- Начало диаграммы ---
+|Клиент (iOS)|
+start
+
+:Пользователь выбирает игру;
+:Нажимает "Начать";
+
+|#LightGray|Сервер (FastAPI)|
+if (Проверка JWT токена) then (Валидный)
+  ' --- Создание сессии ---
+  :POST /api/session/start;
+  partition API_Layer {
+    :Вызвать SessionService.start_new_session();
+  }
+  partition Service_Layer {
+    :Сформировать объект Session;
+    :Вызвать SessionRepository.create_session();
+  }
+  partition Repository_Layer {
+    :Создать документ 'session' в Firestore;
+  }
+  |Клиент (iOS)|
+  :Получить `sessionId`;
+
+  ' --- Игровой цикл ---
+  group Игровой цикл
+    while (Есть еще вопросы?)
+      :Показать вопрос;
+      :Получить ответ от пользователя;
+      ' Локальная обработка на клиенте
+      if (Ответ правильный?) then (Да)
+        :Увеличить счет; 
+        :Увеличить счетчик серии правильных ответов;
+        if (10 правильных ответов подряд?) then (Да)
+          :Отметить "Perfect Streak" как полученное (локально);
+          note right: Уведомление пользователю: 'Perfect Streak' получен!
+        endif
+      else (Нет)
+        :Сбросить счетчик серии правильных ответов;
+        :Подготовить подсказку (локально);
+        :Показать подсказку;
+      endif
+      :Сохранить RoundDetail (question_id, answer, is_correct, time_spent) в локальный список;
+      :Обновить UI (счет, прогресс);
+
+      if (Пользователь решает выйти из игры?) then (Да)
+        :Собрать текущие RoundDetail, счет, флаг PerfectStreak;
+        note left: Клиент отправляет накопленный прогресс
+        :PATCH /api/session/finish (с данными и указанием status=ABANDONED);
+        
+        |#LightGray|Сервер (FastAPI)|
+        ' Сервер обрабатывает аналогично обычному завершению,
+        ' но устанавливает статус сессии ABANDONED.
+        ' Логика достижений (Perfect Streak, Weekly Fifty) также отрабатывает.
+        partition API_Layer {
+          :Получить данные (List<RoundDetail>, score, perfect_streak_flag, status);
+          :Вызвать SessionService.finish_session(sessionId, details, score, perfect_streak_flag, status);
+        }
+        partition Service_Layer {
+          :Установить Session.status = ABANDONED;
+          :Сохранить List<RoundDetail> и итоговый score в сессию;
+          if (perfect_streak_flag == true И "Perfect Streak" еще не выдан для этой сессии) then (Да)
+            :Вызвать AchievementService.grant_achievement("Perfect Streak", user_id, session_id);
+            note right: Создать 'achievement' для Perfect Streak (если применимо)
+          endif
+          :Вызвать AchievementService.check_weekly_achievement(user_id);
+          note right: Проверить 'achievement' для Weekly Fifty (если применимо)
+          :Вызвать SessionRepository.update_session();
+        }
+        |Клиент (iOS)|
+        :Показать главный экран или экран выхода;
+        stop ' Завершение потока для вышедшего пользователя
+      endif
+    endwhile (Игра закончена И пользователь не вышел)
+  end group
+
+  ' --- Завершение сессии (если игра пройдена до конца) ---
+  if (Игра завершена нормально?) then (Да)
+    :Собрать данные для завершения сессии (List<RoundDetail>, итоговый счет, флаг PerfectStreak);
+    :PATCH /api/session/finish (с данными и указанием status=FINISHED);
+    |#LightGray|Сервер (FastAPI)|
+    partition API_Layer {
+      :Получить данные (List<RoundDetail>, score, perfect_streak_flag, status);
+      :Вызвать SessionService.finish_session(sessionId, details, score, perfect_streak_flag, status);
+    }
+    partition Service_Layer {
+      :Установить Session.status = FINISHED;
+      :Сохранить List<RoundDetail> и итоговый score в сессию;
+      if (perfect_streak_flag == true И "Perfect Streak" еще не выдан для этой сессии) then (Да)
+        :Вызвать AchievementService.grant_achievement("Perfect Streak", user_id, session_id);
+        note right: Создать документ 'achievement' для Perfect Streak
+      endif
+      :Вызвать AchievementService.check_weekly_achievement(user_id);
+      note right: Проверить и при необходимости создать 'achievement' для Weekly Fifty
+      :Вызвать SessionRepository.update_session();
+    }
+    |Клиент (iOS)|
+    :Показать экран результатов;
+    stop
+  endif
+
+else (Невалидный)
+  |Клиент (iOS)|
+  :Получить ошибку 401 Unauthorized;
+  :Перенаправить на экран входа;
+  stop
+endif
+@enduml

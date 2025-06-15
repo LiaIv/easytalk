@@ -16,7 +16,7 @@ class RoundDetail(BaseModel):
     question_id: str
     answer: str
     is_correct: bool
-    time_spent: float = Field(ge=0)  # Время в секундах, должно быть >= 0
+    time_spent: float = Field(ge=0)  # Время в секундах должно быть >= 0
 
 # Модель игровой сессии
 class SessionModel(BaseModel):
