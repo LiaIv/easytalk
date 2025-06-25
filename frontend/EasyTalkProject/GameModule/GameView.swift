@@ -59,12 +59,12 @@ struct GameView: View {
                 switch game {
                 case .sentence:
                     // Свойство для скрытия TabBar при переходе на экран игры
-                    SentenceGameScreen()
-                        .hideCustomTabBar() // Используем наш новый модификатор
+                    BuildSentenceGameScreen()
+                        .hideCustomTabBar() // Экран новой игры с бекендом
                 case .animal:
                     // Скрываем TabBar также и для игры с животными
-                    AnimalGuessGameScreen()
-                        .hideTabBar() // Используем наш новый модификатор
+                    GuessAnimalGameScreen()
+                        .hideCustomTabBar() // Скрываем TabBar для новой интегрированной игры
                 }
             }
         }

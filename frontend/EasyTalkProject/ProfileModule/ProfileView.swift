@@ -27,6 +27,7 @@ struct ProfileView: View {
     ]
 
     @State private var showExitAppConfirmation = false
+    @StateObject private var vm = ProfileViewModel()
     @State private var achievementsNotAvailable: Bool = true // когда достижения будут реализованы
     @State private var showingLoginView = false
     
@@ -179,6 +180,7 @@ struct ProfileView: View {
                 AuthView()
             }
             .onAppear {
+                vm.load()
                 // Загрузка имени
                 if let savedName = UserDefaults.standard.string(forKey: userNameKey) {
                     userName = savedName
@@ -204,6 +206,12 @@ struct ProfileView: View {
                         avatarImage = Image(uiImage: uiImage)
                         UserDefaults.standard.set(data, forKey: userImageKey)
                     }
+                }
+            }
+            .onChange(of: vm.profile) { newProfile in
+                if let profile = newProfile {
+                    self.userName = profile.displayName ?? profile.email
+                    // при необходимости можно обновить selectedLevel
                 }
             }
             // функция изменения имени
@@ -241,6 +249,7 @@ struct ProfileView: View {
                             
                             if !trimmedName.isEmpty && trimmedName.count <= 22 {
                                 userName = trimmedName
+                                vm.updateDisplayName(trimmedName)
                                 showEditBanner = false
                                 UserDefaults.standard.set(userName, forKey: userNameKey)
                             }
