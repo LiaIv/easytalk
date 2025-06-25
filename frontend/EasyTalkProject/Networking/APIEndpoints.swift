@@ -63,6 +63,7 @@ public enum Endpoints {
             var items: [URLQueryItem] = []
             if let difficulty = difficulty { items.append(URLQueryItem(name: "difficulty", value: String(difficulty))) }
             if let limit = limit { items.append(URLQueryItem(name: "limit", value: String(limit))) }
+            if let since = since { items.append(URLQueryItem(name: "since", value: String(since))) }
             return items.isEmpty ? nil : items
         }
         public let body: Data? = nil
@@ -83,6 +84,7 @@ public enum Endpoints {
             var items: [URLQueryItem] = []
             if let difficulty = difficulty { items.append(URLQueryItem(name: "difficulty", value: String(difficulty))) }
             if let limit = limit { items.append(URLQueryItem(name: "limit", value: String(limit))) }
+            if let since = since { items.append(URLQueryItem(name: "since", value: String(since))) }
             return items.isEmpty ? nil : items
         }
         public let body: Data? = nil

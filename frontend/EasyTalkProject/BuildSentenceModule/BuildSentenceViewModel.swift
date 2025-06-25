@@ -21,20 +21,36 @@ final class BuildSentenceViewModel: ObservableObject {
         return sentences[currentIndex]
     }
 
-    /// Starts a new game session and preloads sentences.
-    func startGame(difficulty: Int? = nil, limit: Int = 10) {
+    /// Starts a new game session.
+    /// Loads cached sentences first, then asynchronously pulls incremental updates.
+    func startGame(difficulty: Int? = nil) {
+        let cache = LocalContentStore.shared
+        sentences = cache.sentences
+        currentIndex = 0
+        details = []
+        score = 0
+
         Task {
             isLoading = true
+            defer { isLoading = false }
             do {
-                sessionId = try await GameService.startBuildSentenceSession()
-                sentences = try await GameService.fetchSentences(difficulty: difficulty, limit: limit)
-                currentIndex = 0
-                details = []
-                score = 0
+                // Attempt to start session (offline safe)
+                if sessionId == nil {
+                    do {
+                        sessionId = try await GameService.startBuildSentenceSession()
+                    } catch {
+                        // Offline
+                    }
+                }
+
+                let update = try await GameService.fetchSentencesUpdate(since: cache.contentVersion, difficulty: difficulty)
+                if !update.items.isEmpty {
+                    cache.updateSentences(update.items, newVersion: update.version)
+                    sentences = cache.sentences
+                }
             } catch {
-                self.error = error.localizedDescription
+                print("Sentences update failed: \(error)")
             }
-            isLoading = false
         }
     }
 
@@ -56,8 +72,13 @@ final class BuildSentenceViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                _ = try await GameService.finishSession(sessionId: sid, details: details, score: score)
-                isFinished = true
+                do {
+                    _ = try await GameService.finishSession(sessionId: sid, details: details, score: score)
+                    isFinished = true
+                } catch {
+                    PendingSyncStore.shared.enqueueFinishSession(sessionId: sid, details: details, score: score)
+                    isFinished = true
+                }
             } catch {
                 self.error = error.localizedDescription
             }

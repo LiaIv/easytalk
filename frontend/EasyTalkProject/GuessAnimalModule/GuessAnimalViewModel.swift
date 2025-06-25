@@ -21,20 +21,41 @@ final class GuessAnimalViewModel: ObservableObject {
         return animals[currentIndex]
     }
 
-    /// Starts a new game session and preloads animals.
-    func startGame(difficulty: Int? = nil, limit: Int = 10) {
+    /// Starts a new game session.
+    /// 1. Immediately shows cached animals from `LocalContentStore` for offline responsiveness.
+    /// 2. Asynchronously starts a session and requests incremental updates from backend.
+    func startGame(difficulty: Int? = nil) {
+        // Load cached data first
+        let cache = LocalContentStore.shared
+        animals = cache.animals
+        currentIndex = 0
+        details = []
+        score = 0
+
+        // Start async work: create session + pull updates
         Task {
             isLoading = true
+            defer { isLoading = false }
             do {
-                sessionId = try await GameService.startGuessAnimalSession()
-                animals = try await GameService.fetchAnimals(difficulty: difficulty, limit: limit)
-                currentIndex = 0
-                details = []
-                score = 0
+                // Try to start a session (may fail offline)
+                if sessionId == nil {
+                    do {
+                        sessionId = try await GameService.startGuessAnimalSession()
+                    } catch {
+                        // Ignore if offline; game can still run with cached data
+                    }
+                }
+
+                // Fetch incremental updates
+                let update = try await GameService.fetchAnimalsUpdate(since: cache.contentVersion, difficulty: difficulty)
+                if !update.items.isEmpty {
+                    cache.updateAnimals(update.items, newVersion: update.version)
+                    animals = cache.animals // refresh UI
+                }
             } catch {
-                self.error = error.localizedDescription
+                // Silently ignore network errors; user can still play offline
+                print("Animals update failed: \(error)")
             }
-            isLoading = false
         }
     }
 
@@ -55,8 +76,14 @@ final class GuessAnimalViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                _ = try await GameService.finishSession(sessionId: sid, details: details, score: score)
-                isFinished = true
+                do {
+                    _ = try await GameService.finishSession(sessionId: sid, details: details, score: score)
+                    isFinished = true
+                } catch {
+                    // queue for later sync
+                    PendingSyncStore.shared.enqueueFinishSession(sessionId: sid, details: details, score: score)
+                    isFinished = true // still mark finished locally
+                }
             } catch {
                 self.error = error.localizedDescription
             }

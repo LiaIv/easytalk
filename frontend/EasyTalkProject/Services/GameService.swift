@@ -43,4 +43,19 @@ struct GameService {
             Endpoints.GetSentences(difficulty: difficulty, limit: limit)
         )
     }
+
+    // MARK: - Incremental Updates
+    /// Fetch animals updated since given version. Returns list of changed items and latest version.
+    static func fetchAnimalsUpdate(since: Int, difficulty: Int? = nil) async throws -> ContentUpdate<AnimalContent> {
+        try await APIClient.shared.send(
+            Endpoints.GetAnimals(difficulty: difficulty, limit: nil, since: since)
+        )
+    }
+
+    /// Fetch sentences updated since given version.
+    static func fetchSentencesUpdate(since: Int, difficulty: Int? = nil) async throws -> ContentUpdate<SentenceContent> {
+        try await APIClient.shared.send(
+            Endpoints.GetSentences(difficulty: difficulty, limit: nil, since: since)
+        )
+    }
 }
