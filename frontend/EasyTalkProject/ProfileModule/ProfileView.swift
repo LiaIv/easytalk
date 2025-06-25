@@ -163,6 +163,21 @@ struct ProfileView: View {
                                         .fill(Color.white.opacity(0.6))
                                 )
                                 .opacity(achievement.unlocked ? 1.0 : 0.5)
+                                    .overlay(
+                                        Group {
+                                            if vm.newAchievementIDs.contains(achievement.id) {
+                                                Text("NEW")
+                                                    .font(.caption2.bold())
+                                                    .foregroundColor(.white)
+                                                    .padding(4)
+                                                    .background(Color.red)
+                                                    .clipShape(Capsule())
+                                                    .offset(x: 22, y: -22)
+                                            }
+                                        }, alignment: .topTrailing
+                                    )
+                                    .scaleEffect(vm.newAchievementIDs.contains(achievement.id) ? 1.1 : 1.0)
+                                    .animation(.spring(response: 0.45, dampingFraction: 0.6), value: vm.newAchievementIDs)
                             }
                         }
                         .padding(.horizontal)

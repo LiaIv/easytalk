@@ -50,11 +50,16 @@ public enum Endpoints {
 
     // Achievements
     public struct GetAchievements: APIEndpoint {
-        public let path = "/api/achievements"
-        public let method: HTTPMethod = .GET
-        public let queryItems: [URLQueryItem]? = nil
+        private let since: Date?
+        public init(since: Date? = nil) { self.since = since }
+        public var path: String { "/api/achievements" }
+        public var method: HTTPMethod { .GET }
+        public var queryItems: [URLQueryItem]? {
+            guard let since = since else { return nil }
+            let seconds = Int(since.timeIntervalSince1970)
+            return [URLQueryItem(name: "since", value: String(seconds))]
+        }
         public let body: Data? = nil
-        public init() {}
     }
 
     public struct GetAnimals: APIEndpoint {
