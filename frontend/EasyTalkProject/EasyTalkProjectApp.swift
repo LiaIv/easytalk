@@ -73,7 +73,9 @@ struct EasyTalkProjectApp: App {
         func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
             
             FirebaseApp.configure()
-            print("App Delegete")
+            // Start network monitor to auto-flush offline queue
+            _ = NetworkMonitor.shared
+            print("AppDelegate started")
             
             return true
         }

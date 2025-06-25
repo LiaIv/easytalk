@@ -15,6 +15,7 @@ class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = None
     email: Optional[EmailStr] = None
     photo_url: Optional[str] = None
+    level: Optional[str] = None  # beginner, preIntermediate, intermediate
 
 
 @router.get("", response_model=UserModel)
@@ -71,6 +72,7 @@ async def update_profile(
                 "email": update_dict.get("email"),
                 "display_name": update_dict.get("display_name"),
                 "photo_url": update_dict.get("photo_url"),
+                "level": update_dict.get("level"),
             }
         else:
             updated_user_data = {
@@ -78,7 +80,7 @@ async def update_profile(
                 "email": update_dict.get("email", current_user.email),
                 "display_name": update_dict.get("display_name", current_user.display_name),
                 "photo_url": update_dict.get("photo_url", current_user.photo_url),
-                "level": current_user.level,
+                "level": update_dict.get("level", current_user.level),
                 "created_at": current_user.created_at
             }
         

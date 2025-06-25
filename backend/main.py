@@ -19,6 +19,7 @@ from routers.profile_router import router as profile_router
 from routers.session_router import router as session_router
 from routers.progress_router import router as progress_router
 from routers.content_router import router as content_router
+from routers.achievement_router import router as achievement_router
 
 # --- Firebase Startup Event ---
 
@@ -56,8 +57,9 @@ app.add_middleware(
 app.include_router(profile_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(progress_router, prefix="/api")
-# Эндпоинты контента доступны без дополнительного префикса, так как тесты обращаются по пути "/content/*"
-app.include_router(content_router)
+# Эндпоинты контента (content) и достижений (achievement)
+app.include_router(content_router, prefix="/api")
+app.include_router(achievement_router, prefix="/api")
 
 
 @app.get("/")

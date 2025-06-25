@@ -28,7 +28,7 @@ struct ProfileView: View {
 
     @State private var showExitAppConfirmation = false
     @StateObject private var vm = ProfileViewModel()
-    @State private var achievementsNotAvailable: Bool = true // когда достижения будут реализованы
+    
     @State private var showingLoginView = false
     
     let userNameKey = "userNameKey"
@@ -118,8 +118,8 @@ struct ProfileView: View {
                         .font(.headline)
                         .foregroundColor(.black)
                         .padding(.top, 10)
-
-                    if achievementsNotAvailable {
+ 
+                    if vm.achievements.isEmpty {
                         Text("Soon!")
                             .font(.subheadline)
                             .foregroundColor(.black)
@@ -132,7 +132,39 @@ struct ProfileView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 10)
                     } else {
-                        // Здесь будет код для отображения достижений, когда они будут реализованы
+                        // Achievements grid
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                            ForEach(vm.achievements) { achievement in
+                                VStack(spacing: 6) {
+                                    if let icon = achievement.iconUrl, let url = URL(string: icon) {
+                                        AsyncImage(url: url) { image in
+                                            image.resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                        } placeholder: {
+                                            ProgressView()
+                                        }
+                                        .frame(width: 60, height: 60)
+                                    } else {
+                                        Image(systemName: achievement.unlocked ? "star.fill" : "star")
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 40, height: 40)
+                                            .foregroundColor(achievement.unlocked ? .yellow : .gray)
+                                    }
+ 
+                                    Text(achievement.name)
+                                        .font(.caption)
+                                        .foregroundColor(.black)
+                                }
+                                .padding(6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.white.opacity(0.6))
+                                )
+                                .opacity(achievement.unlocked ? 1.0 : 0.5)
+                            }
+                        }
+                        .padding(.horizontal)
                     }
                 }
 

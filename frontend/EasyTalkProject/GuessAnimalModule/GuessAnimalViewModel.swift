@@ -25,6 +25,19 @@ final class GuessAnimalViewModel: ObservableObject {
     /// 1. Immediately shows cached animals from `LocalContentStore` for offline responsiveness.
     /// 2. Asynchronously starts a session and requests incremental updates from backend.
     func startGame(difficulty: Int? = nil) {
+        // Determine difficulty from saved level if not provided
+        let resolvedDifficulty: Int? = {
+            if let diff = difficulty { return diff }
+            if let level = UserDefaults.standard.string(forKey: "englishLevel") {
+                switch level {
+                case "Begin": return 1
+                case "Pre-Inter": return 2
+                case "Interm": return 3
+                default: return nil
+                }
+            }
+            return nil
+        }()
         // Load cached data first
         let cache = LocalContentStore.shared
         animals = cache.animals
@@ -47,7 +60,7 @@ final class GuessAnimalViewModel: ObservableObject {
                 }
 
                 // Fetch incremental updates
-                let update = try await GameService.fetchAnimalsUpdate(since: cache.contentVersion, difficulty: difficulty)
+                let update = try await GameService.fetchAnimalsUpdate(since: cache.contentVersion, difficulty: resolvedDifficulty)
                 if !update.items.isEmpty {
                     cache.updateAnimals(update.items, newVersion: update.version)
                     animals = cache.animals // refresh UI

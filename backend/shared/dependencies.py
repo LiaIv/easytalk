@@ -35,6 +35,7 @@ def get_progress_repository(db: FirestoreClient = Depends(get_db)) -> ProgressRe
 # ---------- Service-level dependencies ----------
 from services.progress_service import ProgressService
 from services.session_service import SessionService
+from services.achievement_service import AchievementService
 
 def get_progress_service(
     progress_repo: ProgressRepository = Depends(get_progress_repository),
@@ -48,3 +49,10 @@ def get_session_service(
 ) -> SessionService:
     """FastAPI dependency returning SessionService instance."""
     return SessionService(session_repo=session_repo, achievement_repo=achievement_repo)
+
+def get_achievement_service(
+    achievement_repo: AchievementRepository = Depends(get_achievement_repository),
+    progress_repo: ProgressRepository = Depends(get_progress_repository),
+) -> AchievementService:
+    """FastAPI dependency returning AchievementService instance."""
+    return AchievementService(achievement_repo=achievement_repo, progress_repo=progress_repo)

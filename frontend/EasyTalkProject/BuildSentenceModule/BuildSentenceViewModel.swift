@@ -24,6 +24,19 @@ final class BuildSentenceViewModel: ObservableObject {
     /// Starts a new game session.
     /// Loads cached sentences first, then asynchronously pulls incremental updates.
     func startGame(difficulty: Int? = nil) {
+        // Determine difficulty from saved level if not provided
+        let resolvedDifficulty: Int? = {
+            if let diff = difficulty { return diff }
+            if let level = UserDefaults.standard.string(forKey: "englishLevel") ?? UserDefaults.standard.string(forKey: "userLevelKey") {
+                switch level {
+                case "Begin": return 1
+                case "Pre-Inter": return 2
+                case "Interm": return 3
+                default: return nil
+                }
+            }
+            return nil
+        }()
         let cache = LocalContentStore.shared
         sentences = cache.sentences
         currentIndex = 0
@@ -43,7 +56,7 @@ final class BuildSentenceViewModel: ObservableObject {
                     }
                 }
 
-                let update = try await GameService.fetchSentencesUpdate(since: cache.contentVersion, difficulty: difficulty)
+                let update = try await GameService.fetchSentencesUpdate(since: cache.contentVersion, difficulty: resolvedDifficulty)
                 if !update.items.isEmpty {
                     cache.updateSentences(update.items, newVersion: update.version)
                     sentences = cache.sentences

@@ -6,12 +6,16 @@ final class ProfileViewModel: ObservableObject {
     @Published var profile: UserModel?
     @Published var isLoading: Bool = false
     @Published var error: String?
+    @Published var achievements: [AchievementModel] = []
 
     func load() {
         Task {
             do {
                 isLoading = true
-                profile = try await ProfileService.getProfile()
+                async let profileTask = ProfileService.getProfile()
+                async let achievementsTask: [AchievementModel] = AchievementService.getAchievements()
+                profile = try await profileTask
+                achievements = try await achievementsTask
             } catch {
                 error = error.localizedDescription
             }
@@ -23,7 +27,21 @@ final class ProfileViewModel: ObservableObject {
         Task {
             do {
                 let updated = try await ProfileService.updateProfile(
-                    UpdateProfileRequest(displayName: name, email: nil, photoUrl: nil)
+                    UpdateProfileRequest(displayName: name)
+                )
+                profile = updated
+            } catch {
+                error = error.localizedDescription
+            }
+        }
+    }
+
+    /// Update user's English level on the server
+    func updateLevel(_ level: String) {
+        Task {
+            do {
+                let updated = try await ProfileService.updateProfile(
+                    UpdateProfileRequest(level: level)
                 )
                 profile = updated
             } catch {

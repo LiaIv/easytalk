@@ -48,6 +48,15 @@ public enum Endpoints {
         public var body: Data? { try? JSONEncoder().encode(request) }
     }
 
+    // Achievements
+    public struct GetAchievements: APIEndpoint {
+        public let path = "/api/achievements"
+        public let method: HTTPMethod = .GET
+        public let queryItems: [URLQueryItem]? = nil
+        public let body: Data? = nil
+        public init() {}
+    }
+
     public struct GetAnimals: APIEndpoint {
         private let difficulty: Int?
         private let limit: Int?

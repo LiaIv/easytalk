@@ -14,6 +14,17 @@ public struct UpdateProfileRequest: Codable {
     public let displayName: String?
     public let email: String?
     public let photoUrl: String?
+    public let level: String?
+
+    public init(displayName: String? = nil,
+                email: String? = nil,
+                photoUrl: String? = nil,
+                level: String? = nil) {
+        self.displayName = displayName
+        self.email = email
+        self.photoUrl = photoUrl
+        self.level = level
+    }
 }
 
 // MARK: - Session
@@ -112,4 +123,13 @@ public struct SentenceContent: Codable {
     public let words: [String]
     public let difficulty: Int
     public let translation: String?
+}
+
+// MARK: - Achievements
+public struct AchievementModel: Codable, Identifiable {
+    public let id: String
+    public let name: String
+    public let description: String
+    public let iconUrl: String?
+    public let unlocked: Bool
 }
