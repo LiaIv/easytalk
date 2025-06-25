@@ -19,6 +19,15 @@ class ProgressRepository:
         # В mode="json" date уже преобразуется в строку автоматически
         await self._collection.document(doc_id).set(data)
 
+    async def sum_total_score(self, user_id: str) -> int:
+        """Возвращает сумму всех очков пользователя за всё время."""
+        query = self._collection.where(filter=FieldFilter("user_id", "==", user_id))
+        total = 0
+        async for doc in query.stream():
+            data = doc.to_dict()
+            total += data.get("score", 0)
+        return total
+
     async def sum_scores_for_week(self, user_id: str, week_ago: datetime) -> int:
         """
         Суммирует daily_score для всех записей, где поле date >= week_ago.date().

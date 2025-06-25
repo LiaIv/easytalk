@@ -22,17 +22,51 @@ from shared.dependencies import _create_async_client  # type: ignore
 # Catalog definition (can later be moved to separate JSON or admin panel)
 # ---------------------------------------------------------------------------
 _CATALOG: List[Dict[str, Any]] = [
+    # Weekly score achievement (оставляем для обратной совместимости)
     {
         "id": "weekly_fifty",
-        "name": "50 за неделю",
+        "name": "50 очков за неделю",
         "description": "Набери 50 очков за последние 7 дней",
         "icon_url": None,
+        "threshold": 50,
     },
+    # Perfect session (все ответы верны)
     {
         "id": "perfect_streak",
-        "name": "Идеальная серия",
-        "description": "Заверши 7 игр подряд без ошибок",
+        "name": "Идеальная сессия",
+        "description": "Заверши игру без ошибок",
         "icon_url": None,
+        "threshold": 1,
+    },
+    # Total score milestones
+    {
+        "id": "total_score_50",
+        "name": "Собрано 50 очков",
+        "description": "Набери 50 очков суммарно",
+        "icon_url": None,
+        "threshold": 50,
+    },
+    {
+        "id": "total_score_100",
+        "name": "Собрано 100 очков",
+        "description": "Набери 100 очков суммарно",
+        "icon_url": None,
+        "threshold": 100,
+    },
+    {
+        "id": "total_score_500",
+        "name": "Собрано 500 очков",
+        "description": "Набери 500 очков суммарно",
+        "icon_url": None,
+        "threshold": 500,
+    },
+    # 7-day streak
+    {
+        "id": "streak_7_days",
+        "name": "Серия 7 дней",
+        "description": "Играй каждый день 7 дней подряд",
+        "icon_url": None,
+        "threshold": 7,
     },
 ]
 

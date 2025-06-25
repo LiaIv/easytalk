@@ -8,6 +8,10 @@ from enum import Enum
 class AchievementType(str, Enum):
     PERFECT_STREAK = "perfect_streak"
     WEEKLY_FIFTY = "weekly_fifty"
+    TOTAL_SCORE_50 = "total_score_50"
+    TOTAL_SCORE_100 = "total_score_100"
+    TOTAL_SCORE_500 = "total_score_500"
+    STREAK_7_DAYS = "streak_7_days"
     # добавим дополнительные типы при необходимости
 
 # Модель достижения

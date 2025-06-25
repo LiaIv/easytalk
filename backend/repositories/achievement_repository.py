@@ -30,6 +30,19 @@ class AchievementRepository:
             results.append(AchievementModel(**obj))
         return results
 
+    async def exists_achievement(self, user_id: str, achievement_type: AchievementType) -> bool:
+        """Проверяет, есть ли у пользователя достижение указанного типа."""
+        docs_stream = (
+            self._collection
+            .where(filter=FieldFilter("user_id", "==", user_id))
+            .where(filter=FieldFilter("type", "==", achievement_type.value))
+            .limit(1)
+            .stream()
+        )
+        async for _ in docs_stream:
+            return True
+        return False
+
     async def exists_weekly_achievement(self, user_id: str, period_start: date) -> bool:
         period_str = period_start.isoformat()
         docs_stream = (
