@@ -50,7 +50,8 @@ app.add_middleware(
 app.include_router(profile_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(progress_router, prefix="/api")
-app.include_router(content_router, prefix="/api")
+# Эндпоинты контента доступны без дополнительного префикса, так как тесты обращаются по пути "/content/*"
+app.include_router(content_router)
 
 
 @app.get("/")

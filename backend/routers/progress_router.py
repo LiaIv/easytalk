@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional
+import inspect
 from datetime import datetime
 
 from services.progress_service import ProgressService
@@ -98,7 +99,7 @@ async def get_progress(
     Требуется токен авторизации.
     """
     try:
-        progress_data = await progress_service.get_progress(user_id=uid, days=days)
+        progress_data = await progress_service.get_progress(uid, days)
         
         # Если данных нет, возвращаем пустой ответ
         if not progress_data["data"]:

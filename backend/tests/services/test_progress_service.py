@@ -161,13 +161,14 @@ class TestProgressService:
             
             assert result["success_rate"] == expected_success_rate
 
-    def test_get_progress_empty_data(self, progress_service, progress_repository_mock):
+    @pytest.mark.asyncio
+    async def test_get_progress_empty_data(self, progress_service, progress_repository_mock):
         """Тест получения прогресса при отсутствии данных"""
         # Настройка мока для возвращения пустого списка
         progress_repository_mock.get_progress.return_value = []
         
         # Выполняем тестируемый метод
-        result = progress_service.get_progress("test_user", 7)
+        result = await progress_service.get_progress("test_user", 7)
         
         # Проверяем структуру и содержимое результата при отсутствии данных
         assert result["data"] == []
@@ -175,7 +176,8 @@ class TestProgressService:
         assert result["average_score"] == 0
         assert result["success_rate"] == 0
 
-    def test_get_weekly_summary(self, progress_service, progress_repository_mock):
+    @pytest.mark.asyncio
+    async def test_get_weekly_summary(self, progress_service, progress_repository_mock):
         """Тест получения суммарных данных за неделю"""
         # Подготовка данных
         user_id = "test_user_123"
@@ -185,7 +187,7 @@ class TestProgressService:
         progress_repository_mock.sum_scores_for_week.return_value = expected_score
         
         # Выполняем тестируемый метод
-        result = progress_service.get_weekly_summary(user_id)
+        result = await progress_service.get_weekly_summary(user_id)
         
         # Проверяем вызов репозитория
         progress_repository_mock.sum_scores_for_week.assert_called_once()

@@ -1,0 +1,38 @@
+```mermaid
+flowchart TB
+    start([Start])
+    end([End])
+
+    %% --- Start Session ---
+    A["POST /api/session/start"]
+    B{game_type<br/>valid?}
+    C["HTTP 422<br/>Invalid game_type"]
+    D["SessionService.start_session"]
+    E["SessionRepository.create_session -> Firestore"]
+    F["return session_id"]
+
+    %% --- Gameplay (client-side, сокращено) ---
+    G["Gameplay loop<br/>(client)"]
+
+    %% --- Finish Session ---
+    H["PATCH /api/session/finish<br/>(session_id, details[], score)"]
+    I["Validate body in SessionRouter"]
+    J["SessionService.finish_session"]
+    K["SessionRepository.get_session"]
+    L{Session exists &<br/>belongs to user &<br/>ACTIVE?}
+    N1["HTTP 404/400"]
+    M["SessionRepository.update_session<br/>(details, end_time, score,<br/>status=FINISHED)"]
+    N{All answers correct?}
+    O["AchievementRepository.create<br/>PERFECT_STREAK"]
+    P["Skip achievement"]
+    Q["HTTP 200 OK"]
+
+    %% --- Flow connections ---
+    start --> A --> B
+    B -- "No" --> C --> end
+    B -- "Yes" --> D --> E --> F --> G --> H --> I --> J --> K --> L
+    L -- "No" --> N1 --> end
+    L -- "Yes" --> M --> N
+    N -- "Yes" --> O --> Q --> end
+    N -- "No" --> P --> Q --> end
+```

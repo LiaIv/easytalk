@@ -7,6 +7,14 @@ from shared.auth import get_current_user_id
 from shared.dependencies import get_db
 from google.cloud.firestore_v1.async_client import AsyncClient  # Async Firestore client
 
+# Вспомогательная обёртка для обратной совместимости с тестами,
+# которые ожидают наличие функции `get_firestore` в модуле.
+# В рабочем коде следует использовать зависимость `get_db`.
+
+def get_firestore():
+    """Возвращает Async Firestore-клиент (используется только в тестах)."""
+    return get_db()
+
 # Создаем роутер для контента
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -58,9 +66,10 @@ async def get_animals(uid: str = Depends(get_current_user_id), db: AsyncClient =
 
 
 @router.get("/animals/{animal_id}", response_model=AnimalContent)
-async def get_animal_by_id(db: AsyncClient = Depends(get_db),
+async def get_animal_by_id(
     animal_id: str = Path(..., description="Идентификатор животного"),
     uid: str = Depends(get_current_user_id),
+    db: AsyncClient = Depends(get_db),
 ):
     """
     Получить данные о конкретном животном по его ID.

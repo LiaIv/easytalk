@@ -12,9 +12,9 @@ class TestAchievementRepository:
     """Тесты для репозитория достижений пользователей"""
 
     @pytest.fixture
-    def achievement_repository(self, clean_firestore):
+    def achievement_repository(self, clean_firestore_async):
         """Инициализируем репозиторий для тестов"""
-        return AchievementRepository(db=clean_firestore)
+        return AchievementRepository(db=clean_firestore_async)
 
     @pytest.fixture
     def sample_perfect_streak(self):
@@ -41,7 +41,7 @@ class TestAchievementRepository:
         )
 
     @pytest.mark.asyncio
-    async def test_create_achievement(self, achievement_repository, sample_perfect_streak, clean_firestore):
+    async def test_create_achievement(self, achievement_repository, sample_perfect_streak, clean_firestore_async):
         """Тест создания достижения в БД"""
         print("\n[DEBUG] test_create_achievement: Начало теста")
         
@@ -50,7 +50,7 @@ class TestAchievementRepository:
         print("[DEBUG] test_create_achievement: После achievement_repository.create_achievement()")
 
         print("[DEBUG] test_create_achievement: Перед clean_firestore.collection.get()")
-        doc = await clean_firestore.collection("achievements").document(sample_perfect_streak.achievement_id).get()
+        doc = await clean_firestore_async.collection("achievements").document(sample_perfect_streak.achievement_id).get()
         print("[DEBUG] test_create_achievement: После firestore_client.collection.get()")
         
         assert doc.exists
@@ -63,13 +63,13 @@ class TestAchievementRepository:
         print("[DEBUG] test_create_achievement: Тест завершен успешно")
 
     @pytest.mark.asyncio
-    async def test_create_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore):
+    async def test_create_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore_async):
         """Тест создания еженедельного достижения в БД"""
         # Создаем достижение
         await achievement_repository.create_achievement(sample_weekly_fifty)
 
         # Проверяем, что достижение создано в Firestore
-        doc = await clean_firestore.collection("achievements").document(sample_weekly_fifty.achievement_id).get()
+        doc = await clean_firestore_async.collection("achievements").document(sample_weekly_fifty.achievement_id).get()
         assert doc.exists
 
         # Проверяем, что данные корректны
@@ -80,7 +80,7 @@ class TestAchievementRepository:
         assert achievement_data["period_start_date"] == sample_weekly_fifty.period_start_date.isoformat()
 
     @pytest.mark.asyncio
-    async def test_get_user_achievements(self, achievement_repository, sample_perfect_streak, sample_weekly_fifty, clean_firestore):
+    async def test_get_user_achievements(self, achievement_repository, sample_perfect_streak, sample_weekly_fifty, clean_firestore_async):
         """Тест получения всех достижений пользователя"""
         # Создаем несколько достижений для одного пользователя
         user_id = "test_user_456"
@@ -90,12 +90,12 @@ class TestAchievementRepository:
         sample_weekly_fifty.user_id = user_id
         
         # Сохраняем достижения напрямую в Firestore
-        await clean_firestore.collection("achievements").document(sample_perfect_streak.achievement_id).set(
-            sample_perfect_streak.model_dump(exclude_none=True)
+        await clean_firestore_async.collection("achievements").document(sample_perfect_streak.achievement_id).set(
+            sample_perfect_streak.model_dump(mode="json")
         )
         
-        await clean_firestore.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
-            sample_weekly_fifty.model_dump(exclude_none=True)
+        await clean_firestore_async.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
+            sample_weekly_fifty.model_dump(mode="json")
         )
         
         # Получаем достижения пользователя
@@ -110,7 +110,7 @@ class TestAchievementRepository:
         assert AchievementType.WEEKLY_FIFTY in achievement_types
         
     @pytest.mark.asyncio
-    async def test_exists_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore):
+    async def test_exists_weekly_achievement(self, achievement_repository, sample_weekly_fifty, clean_firestore_async):
         """Тест проверки существования еженедельного достижения"""
         user_id = "test_user_789"
         period_start = date.today() - timedelta(days=date.today().weekday())
@@ -120,7 +120,7 @@ class TestAchievementRepository:
         sample_weekly_fifty.period_start_date = period_start
         
         # Сохраняем достижение в БД
-        await clean_firestore.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
+        await clean_firestore_async.collection("achievements").document(sample_weekly_fifty.achievement_id).set(
             sample_weekly_fifty.model_dump(mode="json")
         )
         
@@ -134,7 +134,7 @@ class TestAchievementRepository:
         assert exists is False
         
     @pytest.mark.asyncio
-    async def test_delete_weekly_achievements(self, achievement_repository, clean_firestore):
+    async def test_delete_weekly_achievements(self, achievement_repository, clean_firestore_async):
         """Тест удаления еженедельных достижений"""
         user_id = "test_user_999"
         period_start = date.today() - timedelta(days=date.today().weekday())
@@ -150,13 +150,13 @@ class TestAchievementRepository:
             )
             
             # Сохраняем достижение в БД
-            await clean_firestore.collection("achievements").document(achievement.achievement_id).set(
+            await clean_firestore_async.collection("achievements").document(achievement.achievement_id).set(
                 achievement.model_dump(mode="json")
             )
         
         # Проверяем, что достижения были созданы
         query = (
-            clean_firestore.collection("achievements")
+            clean_firestore_async.collection("achievements")
             .where(filter=FieldFilter("user_id", "==", user_id))
             .where(filter=FieldFilter("type", "==", "weekly_fifty"))
             .where(filter=FieldFilter("period_start_date", "==", period_start.isoformat()))

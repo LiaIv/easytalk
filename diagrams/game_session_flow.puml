@@ -1,0 +1,41 @@
+@startuml
+' Блок-схема жизненного цикла игровой сессии (backend-ориентированная)
+' Основана на реализациях session_router.py, session_service.py, session_repository.py
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #F7F7F7
+  BorderColor #C0C0C0
+  ArrowColor #505050
+  FontName Segoe UI
+  FontSize 12
+}
+
+title Game Session Start / Finish Flow
+
+start
+
+:Клиент → POST /api/session/start;
+if (game_type допустим?) then (да)
+  :SessionRouter -> SessionService.start_session;
+  :SessionService формирует SessionModel;
+  :SessionRepository.create_session → Firestore;
+  :Вернуть {session_id};
+else (нет)
+  :HTTP 422;
+  stop
+endif
+
+' --- Игровой процесс на клиенте (опущен) ---
+
+:Клиент → PATCH /api/session/finish (session_id, details[], score);
+:SessionRouter валидирует body;
+:SessionService.finish_session;
+:SessionRepository.get_session (валидация владельца/статуса);
+:SessionRepository.update_session (details, end_time, score, status=FINISHED);
+if (Все ответы верны?) then (Perfect)
+  :AchievementRepository.create_achievement(PERFECT_STREAK);
+endif
+:return HTTP 200;
+stop
+@enduml

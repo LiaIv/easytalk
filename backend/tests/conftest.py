@@ -91,10 +91,11 @@ def client():
 
 # Фикстура для TestClient с переопределенной зависимостью get_db
 @pytest.fixture
-def test_client_overridden_db(clean_firestore):
-    from main import app as main_fastapi_app  # Импортируем FastAPI app здесь, чтобы избежать проблем с порядком инициализации
-    from shared.dependencies import get_db # Импортируем оригинальную зависимость
-    from google.cloud.firestore import Client # Для тайп-хинта
+def test_client_overridden_db(clean_firestore, mock_firestore_client, request):
+    from main import app as main_fastapi_app  
+    from shared.dependencies import get_db  
+    from shared.auth import get_current_user_id
+    from google.cloud.firestore import Client 
 
     # ---- START DIAGNOSTIC PRINTS ----
     print(f"\n[CONTEST_DEBUG] Inside test_client_overridden_db fixture.")
@@ -107,12 +108,27 @@ def test_client_overridden_db(clean_firestore):
     # ---- END DIAGNOSTIC PRINTS ----
 
     def get_db_override() -> Client:
-        # clean_firestore это и есть экземпляр firestore_client_for_testing
-        return clean_firestore # Возвращаем клиент из фикстуры clean_firestore
+        # Если передан мок Firestore, используем его, иначе реальный клиент
+        return mock_firestore_client
+
+
 
     # Сохраняем оригинальные переопределения ИМЕННО для main_fastapi_app
     original_overrides = main_fastapi_app.dependency_overrides.copy() 
     main_fastapi_app.dependency_overrides[get_db] = get_db_override
+    print(f"[CONTEST_DEBUG] get_db_override will return: mock")
+
+    # --- Conditional auth override ---
+    TEST_USER_ID = "test_content_user_123"
+    is_unauthorized_test = 'unauthorized' in request.node.name
+    if not is_unauthorized_test:
+        def get_current_user_id_override() -> str:
+            return TEST_USER_ID
+        main_fastapi_app.dependency_overrides[get_current_user_id] = get_current_user_id_override
+        print("[CONTEST_DEBUG] get_current_user_id overridden (authorized test)")
+    else:
+        print("[CONTEST_DEBUG] get_current_user_id NOT overridden (unauthorized test)")
+
 
     # ---- START DIAGNOSTIC PRINTS ----
     if hasattr(main_fastapi_app, 'dependency_overrides'):
