@@ -3,6 +3,7 @@ import SwiftUI
 /// New game screen that builds a sentence from shuffled words using real backend data.
 struct BuildSentenceGameScreen: View {
     @StateObject private var vm = BuildSentenceViewModel()
+    @EnvironmentObject var toast: ToastManager
     @Environment(\.dismiss) private var dismiss
 
     // UI State
@@ -62,6 +63,11 @@ struct BuildSentenceGameScreen: View {
         }
         .onChange(of: vm.currentIndex) { _ in
             loadCurrentSentence()
+        }
+        .onChange(of: vm.error) { _ in
+            if let msg = vm.error {
+                toast.show(msg)
+            }
         }
     }
 
