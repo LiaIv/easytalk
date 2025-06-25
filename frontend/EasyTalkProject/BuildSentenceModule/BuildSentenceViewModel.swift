@@ -71,14 +71,32 @@ final class BuildSentenceViewModel: ObservableObject {
         guard let sid = sessionId else { return }
         isLoading = true
         Task {
+            // Prepare progress payload
+            let correctAnswers = details.filter { $0.isCorrect }.count
+            let totalTime = details.reduce(0.0) { $0 + $1.timeSpent }
+            let progressReq = SaveProgressRequest(
+                score: score,
+                correctAnswers: correctAnswers,
+                totalAnswers: details.count,
+                timeSpent: totalTime,
+                date: nil
+            )
             do {
+                // Finish session first
                 do {
                     _ = try await GameService.finishSession(sessionId: sid, details: details, score: score)
-                    isFinished = true
                 } catch {
                     PendingSyncStore.shared.enqueueFinishSession(sessionId: sid, details: details, score: score)
-                    isFinished = true
                 }
+
+                // Save progress
+                do {
+                    _ = try await ProgressService.saveProgress(progressReq)
+                } catch {
+                    PendingSyncStore.shared.enqueueSaveProgress(progressReq)
+                }
+
+                isFinished = true
             } catch {
                 self.error = error.localizedDescription
             }

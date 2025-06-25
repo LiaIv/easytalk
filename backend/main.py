@@ -36,6 +36,12 @@ async def startup_event():
     # The initialize_app_for_context function will now determine the environment by itself.
     initialize_app_for_context()
     print("[main.py] Firebase initialized on startup.")
+    # Seed initial game content if collections are empty
+    try:
+        from scripts.seed_games import seed_if_empty
+        await seed_if_empty()
+    except Exception as e:
+        print(f"[main.py] Warning: seeding initial content failed: {e}")
 
 # --- Настройка CORS ---
 app.add_middleware(

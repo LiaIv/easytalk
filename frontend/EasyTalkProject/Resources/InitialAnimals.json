@@ -1,0 +1,29 @@
+[
+  {
+    "id": "lion",
+    "name": "Лев",
+    "english_name": "Lion",
+    "image_url": "https://example.com/images/lion.png",
+    "sound_url": "https://example.com/sounds/lion.mp3",
+    "difficulty": 1,
+    "description": "Царь зверей, крупный хищник саванн"
+  },
+  {
+    "id": "tiger",
+    "name": "Тигр",
+    "english_name": "Tiger",
+    "image_url": "https://example.com/images/tiger.png",
+    "sound_url": "https://example.com/sounds/tiger.mp3",
+    "difficulty": 2,
+    "description": "Крупная полосатая кошка из Азии"
+  },
+  {
+    "id": "bear",
+    "name": "Медведь",
+    "english_name": "Bear",
+    "image_url": "https://example.com/images/bear.png",
+    "sound_url": "https://example.com/sounds/bear.mp3",
+    "difficulty": 1,
+    "description": "Крупное всеядное млекопитающее"
+  }
+]

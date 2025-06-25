@@ -89,4 +89,31 @@ public enum Endpoints {
         }
         public let body: Data? = nil
     }
+
+    // Progress
+    public struct SaveProgress: APIEndpoint {
+        private let request: SaveProgressRequest
+        public init(_ request: SaveProgressRequest) { self.request = request }
+        public var path: String { "/api/progress" }
+        public var method: HTTPMethod { .POST }
+        public var queryItems: [URLQueryItem]? { nil }
+        public var body: Data? { try? JSONEncoder().encode(request) }
+    }
+
+    public struct GetProgress: APIEndpoint {
+        private let days: Int
+        public init(days: Int = 7) { self.days = days }
+        public var path: String { "/api/progress" }
+        public var method: HTTPMethod { .GET }
+        public var queryItems: [URLQueryItem]? { [URLQueryItem(name: "days", value: String(days))] }
+        public let body: Data? = nil
+    }
+
+    public struct GetWeeklySummary: APIEndpoint {
+        public init() {}
+        public var path: String { "/api/progress/weekly-summary" }
+        public var method: HTTPMethod { .GET }
+        public let queryItems: [URLQueryItem]? = nil
+        public let body: Data? = nil
+    }
 }

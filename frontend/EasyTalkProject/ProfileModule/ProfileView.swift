@@ -108,6 +108,11 @@ struct ProfileView: View {
                         }
                     }
                 }
+
+                // Stats chart
+                ProgressStatsView()
+                    .padding(.top, 20)
+
                 VStack {
                     Text("Твои достижения")
                         .font(.headline)

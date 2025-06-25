@@ -1,0 +1,23 @@
+[
+  {
+    "id": "s1",
+    "sentence": "I like apples",
+    "words": ["I", "like", "apples"],
+    "difficulty": 1,
+    "translation": "Мне нравятся яблоки"
+  },
+  {
+    "id": "s2",
+    "sentence": "The cat is sleeping",
+    "words": ["The", "cat", "is", "sleeping"],
+    "difficulty": 1,
+    "translation": "Кот спит"
+  },
+  {
+    "id": "s3",
+    "sentence": "My brother plays football on Sundays",
+    "words": ["My", "brother", "plays", "football", "on", "Sundays"],
+    "difficulty": 2,
+    "translation": "Мой брат играет в футбол по воскресеньям"
+  }
+]

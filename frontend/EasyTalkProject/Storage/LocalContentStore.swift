@@ -51,11 +51,31 @@ final class LocalContentStore {
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        if let cache = try? JSONDecoder().decode(Cache.self, from: data) {
-            animals = cache.animals
-            sentences = cache.sentences
-            contentVersion = cache.version
+        // Try reading previously cached data first
+        if let data = try? Data(contentsOf: fileURL),
+           let cache = try? JSONDecoder().decode(Cache.self, from: data) {
+            self.animals = cache.animals
+            self.sentences = cache.sentences
+            self.contentVersion = cache.version
+            return
+        }
+
+        // Fallback: load bundled initial JSON resources so that offline mode has default content
+        let decoder: JSONDecoder = {
+            let d = JSONDecoder()
+            d.keyDecodingStrategy = .convertFromSnakeCase
+            return d
+        }()
+
+        if let animalsURL = Bundle.main.url(forResource: "InitialAnimals", withExtension: "json"),
+           let data = try? Data(contentsOf: animalsURL),
+           let arr = try? decoder.decode([AnimalContent].self, from: data) {
+            self.animals = arr
+        }
+        if let sentencesURL = Bundle.main.url(forResource: "InitialSentences", withExtension: "json"),
+           let data = try? Data(contentsOf: sentencesURL),
+           let arr = try? decoder.decode([SentenceContent].self, from: data) {
+            self.sentences = arr
         }
     }
 
