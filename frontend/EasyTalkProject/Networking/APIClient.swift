@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseAuth
+import FirebaseCrashlytics
 
 // MARK: - Config loader
 struct AppConfig {
@@ -28,10 +29,11 @@ public enum HTTPMethod: String {
 }
 
 // MARK: - Network Error
-public enum NetworkError: Error, LocalizedError {
+public enum APIError: Error, LocalizedError {
     case invalidBaseURL
     case invalidURL
     case unauthorised
+    case backend(String)
     case http(Int)
     case decodingFailed(Error)
     case unknown(Error)
@@ -41,6 +43,7 @@ public enum NetworkError: Error, LocalizedError {
         case .invalidBaseURL: return "Invalid base URL in config"
         case .invalidURL:      return "Invalid URL for endpoint"
         case .unauthorised:    return "Unauthorised (401)"
+        case .backend(let msg): return msg
         case .http(let code):  return "HTTP error code: \(code)"
         case .decodingFailed:  return "Failed to decode response"
         case .unknown(let err):return err.localizedDescription
@@ -59,11 +62,11 @@ public protocol APIEndpoint {
 extension APIEndpoint {
     func urlRequest() throws -> URLRequest {
         guard var components = URLComponents(string: AppConfig.shared.baseURL) else {
-            throw NetworkError.invalidBaseURL
+            throw APIError.invalidBaseURL
         }
         components.path += path
         components.queryItems = queryItems
-        guard let url = components.url else { throw NetworkError.invalidURL }
+        guard let url = components.url else { throw APIError.invalidURL }
         var req = URLRequest(url: url)
         req.httpMethod = method.rawValue
         req.httpBody = body
@@ -114,33 +117,49 @@ public struct APIClient {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            throw NetworkError.unknown(error)
+            Crashlytics.crashlytics().record(error: error)
+            throw APIError.unknown(error)
         }
 
         guard let http = response as? HTTPURLResponse else {
-            throw NetworkError.invalidURL
+            throw APIError.invalidURL
         }
 
         if http.statusCode == 401 { // Token expired, retry once
             let refreshedToken = try await TokenProvider.shared.idToken(forceRefresh: true)
             request.setValue("Bearer \(refreshedToken)", forHTTPHeaderField: "Authorization")
             let (retryData, retryResp) = try await URLSession.shared.data(for: request)
-            return try decode(type, from: retryData, response: retryResp)
+            do {
+                return try decode(type, from: retryData, response: retryResp)
+            } catch {
+                Crashlytics.crashlytics().record(error: error)
+                throw error
+            }
         }
 
-        return try decode(type, from: data, response: response)
+        do {
+            return try decode(type, from: data, response: response)
+        } catch {
+            Crashlytics.crashlytics().record(error: error)
+            throw error
+        }
     }
 
     // MARK: - Helpers
     private func decode<T: Decodable>(_ type: T.Type, from data: Data, response: URLResponse) throws -> T {
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-            if http.statusCode == 401 { throw NetworkError.unauthorised }
-            throw NetworkError.http(http.statusCode)
+            // Attempt to decode backend error message
+            if let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let detail = message["detail"] as? String ?? message["message"] as? String {
+                throw APIError.backend(detail)
+            }
+            if http.statusCode == 401 { throw APIError.unauthorised }
+            throw APIError.http(http.statusCode)
         }
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            throw NetworkError.decodingFailed(error)
+            throw APIError.decodingFailed(error)
         }
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileView: View {
+    @EnvironmentObject var toast: ToastManager
     @State private var userName: String = "Ваше имя"
     @State private var newUserName: String = ""
     @State private var showEditBanner: Bool = false
@@ -249,6 +250,11 @@ struct ProfileView: View {
                 if let profile = newProfile {
                     self.userName = profile.displayName ?? profile.email
                     // при необходимости можно обновить selectedLevel
+                }
+            }
+            .onChange(of: vm.error) { newError in
+                if let msg = newError {
+                    toast.show(msg)
                 }
             }
             // функция изменения имени

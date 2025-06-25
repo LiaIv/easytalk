@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 # Это должно быть сделано до импорта других модулей, которые могут использовать эти переменные
 load_dotenv()
 
+# Configure JSON logging early
+from shared.logging_config import configure_logging
+configure_logging()
+
 import uvicorn
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 # Импорт инфраструктурных компонентов
@@ -40,7 +44,9 @@ async def startup_event():
     # Seed initial game content if collections are empty
     try:
         from scripts.seed_games import seed_if_empty
+        from scripts.seed_achievements import seed_catalog_if_empty
         await seed_if_empty()
+        await seed_catalog_if_empty()
     except Exception as e:
         print(f"[main.py] Warning: seeding initial content failed: {e}")
 
@@ -52,6 +58,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Logging middleware ---
+import structlog
+logger = structlog.get_logger()
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    import time
+    start_time = time.time()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("unhandled_exception", path=str(request.url.path), method=request.method)
+        raise
+    duration_ms = int((time.time() - start_time) * 1000)
+    logger.info(
+        "request_completed",
+        path=str(request.url.path),
+        method=request.method,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    return response
 
 # --- Подключение роутеров ---
 app.include_router(profile_router, prefix="/api")

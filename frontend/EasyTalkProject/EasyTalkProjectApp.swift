@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseCrashlytics
 import Firebase
 
 // Добавляем ключ для передачи видимости TabBar через Environment
@@ -27,6 +28,8 @@ struct EasyTalkProjectApp: App {
     @UIApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var showGameView = false
     
+    @StateObject private var toast = ToastManager()
+    
     init() {
         // Проверяем сохраненные настройки при запуске
         // Устанавливаем начальное значение для флага showGameView
@@ -35,18 +38,17 @@ struct EasyTalkProjectApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if showGameView {
-                // При повторном входе или после авторизации показываем MainTabBar с возможностью переключения между экранами
-                if let user = AuthService.shared.currentUser {
-                    MainTabBar(viewModel: MainTabBarViewModel(user: user))
-                } else {
-                    // Фаллбэк, показываем TabBar с экраном игр по умолчанию
-                    TabView {
-                        GameView()
-                            .tabItem {
-                                Image(systemName: "gamecontroller.circle")
-                                Text("мини-игры")
-                            }
+            contentView()
+                .environmentObject(toast)
+                .toast()
+        }
+    }
+
+    @ViewBuilder
+    private func contentView() -> some View {
+        if showGameView {
+            if let user = AuthService.shared.currentUser {
+                MainTabBar(viewModel: MainTabBarViewModel(user: user))
                         
                         EducationView()
                             .tabItem {

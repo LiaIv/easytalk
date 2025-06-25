@@ -8,6 +8,9 @@ from domain.achievement import AchievementModel, AchievementType
 class AchievementRepository:
     def __init__(self, db: AsyncClient):
         self._collection = db.collection("achievements")
+        self._catalog_collection = db.collection("achievement_catalog")
+        self._catalog_cache: list[dict] | None = None
+        self._catalog_cache_ts: float | None = None
 
     async def create_achievement(self, achievement: AchievementModel) -> None:
         """
@@ -40,6 +43,20 @@ class AchievementRepository:
         async for _ in docs_stream:
             return True
         return False
+
+    async def get_catalog(self, max_age_seconds: int = 300) -> list[dict]:
+        """Return catalog items as list[dict]. Cached in-memory for *max_age_seconds*."""
+        import time
+        now = time.time()
+        if self._catalog_cache is not None and self._catalog_cache_ts and now - self._catalog_cache_ts < max_age_seconds:
+            return self._catalog_cache  # type: ignore[return-value]
+        docs_stream = self._catalog_collection.stream()
+        catalog: list[dict] = []
+        async for doc in docs_stream:
+            catalog.append(doc.to_dict())
+        self._catalog_cache = catalog
+        self._catalog_cache_ts = now
+        return catalog
 
     async def delete_weekly_achievements(self, user_id: str, period_start: date) -> None:
         period_str = period_start.isoformat()

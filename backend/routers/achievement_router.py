@@ -14,17 +14,6 @@ class AchievementModel(BaseModel):
     icon_url: HttpUrl | None = None
     unlocked: bool = False
 
-# ------------------ Static catalogue ------------------
-# Пока что каталог ачивок хранится в коде; можно будет вынести в Firestore или конфиг.
-_CATALOGUE: list[dict] = [
-    {
-        "id": "weekly_fifty",
-        "name": "50 за неделю",
-        "description": "Набери 50 очков за последние 7 дней",
-        "icon_url": None,
-    }
-]
-
 # Dependency
 from shared.dependencies import get_achievement_service, AchievementService
 
@@ -37,8 +26,11 @@ async def list_achievements(
     """Return catalogue with unlocked flag from Firestore."""
     # Обновляем достижения (например, еженедельные)
     await ach_service.check_weekly_achievement(uid)
-    # Получаем разблокированные достижения пользователя
+
+    # Получаем каталог и разблокированные достижения пользователя
+    catalog_items = await ach_service._achievement_repo.get_catalog()
     unlocked_models = await ach_service._achievement_repo.get_user_achievements(uid)
     unlocked_ids = {a.type.value for a in unlocked_models}
+
     # Маппим в ответ
-    return [AchievementModel(**item, unlocked=item["id"] in unlocked_ids) for item in _CATALOGUE]
+    return [AchievementModel(**item, unlocked=item["id"] in unlocked_ids) for item in catalog_items]
