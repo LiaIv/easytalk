@@ -147,6 +147,7 @@ class TestSessionRepository:
             session_data["ended_at"], str
         )  # Дата сериализована в ISO строку
         assert session_data["score"] == score
+        assert session_data["status"] == SessionStatus.FINISHED.value
 
         # Проверяем детали раундов
         assert "details" in session_data

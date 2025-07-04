@@ -50,6 +50,7 @@ class SessionRepository:
                 "details": [d.model_dump(mode="json") for d in details],
                 "ended_at": ended_at.isoformat(),  # Преобразуем datetime в ISO строку
                 "score": score,
+                "status": SessionStatus.FINISHED.value,
             },
         )
         await batch.commit()
