@@ -30,14 +30,16 @@ class TestSessionService:
         """Создание экземпляра сервиса с подставленными моками"""
         return SessionService(
             session_repo=session_repository_mock,
-            achievement_repo=achievement_repository_mock
+            achievement_repo=achievement_repository_mock,
         )
 
     @pytest.fixture
     def sample_round_details_all_correct(self):
         """Фикстура для деталей раунда, где все ответы правильные"""
         return [
-            RoundDetail(question_id=f"q{i}", answer="Correct", is_correct=True, time_spent=1.0)
+            RoundDetail(
+                question_id=f"q{i}", answer="Correct", is_correct=True, time_spent=1.0
+            )
             for i in range(10)
         ]
 
@@ -48,30 +50,34 @@ class TestSessionService:
         for i in range(10):
             # Делаем неправильными ответы с индексами 3 и 7
             is_correct = i not in [3, 7]
-            details.append(RoundDetail(
-                question_id=f"q{i}",
-                answer="Answer" if is_correct else "Wrong",
-                is_correct=is_correct,
-                time_spent=1.0
-            ))
+            details.append(
+                RoundDetail(
+                    question_id=f"q{i}",
+                    answer="Answer" if is_correct else "Wrong",
+                    is_correct=is_correct,
+                    time_spent=1.0,
+                )
+            )
         return details
 
     @pytest.mark.asyncio
-    @patch('uuid.uuid4', return_value='test-uuid-123')
-    async def test_start_session(self, mock_uuid, session_service, session_repository_mock):
+    @patch("uuid.uuid4", return_value="test-uuid-123")
+    async def test_start_session(
+        self, mock_uuid, session_service, session_repository_mock
+    ):
         """Тест создания новой сессии"""
         user_id = "test_user_123"
         game_type = "guess_animal"
-        
+
         # Вызываем тестируемый метод
         session_id = await session_service.start_session(user_id, game_type)
-        
+
         # Проверяем, что вернулся ожидаемый ID
         assert session_id == "test-uuid-123"
-        
+
         # Проверяем, что репозиторий вызван с правильными параметрами
         session_repository_mock.create_session.assert_awaited_once()
-        
+
         # Проверяем параметры, переданные в метод create_session
         called_session = session_repository_mock.create_session.await_args.args[0]
         assert isinstance(called_session, SessionModel)
@@ -86,17 +92,22 @@ class TestSessionService:
 
     @pytest.mark.asyncio
     async def test_finish_session_without_achievement(
-        self, session_service, session_repository_mock, achievement_repository_mock, 
-        sample_round_details_some_incorrect
+        self,
+        session_service,
+        session_repository_mock,
+        achievement_repository_mock,
+        sample_round_details_some_incorrect,
     ):
         """Тест завершения сессии без достижения Perfect Streak"""
         session_id = "test_session_123"
         user_id = "test_user_123"
         score = 80
-        
+
         # Вызываем тестируемый метод
-        await session_service.finish_session(session_id, user_id, sample_round_details_some_incorrect, score)
-        
+        await session_service.finish_session(
+            session_id, user_id, sample_round_details_some_incorrect, score
+        )
+
         # Проверяем, что update_session вызван с правильными параметрами
         session_repository_mock.update_session.assert_awaited_once()
         args = session_repository_mock.update_session.await_args.args
@@ -104,24 +115,30 @@ class TestSessionService:
         assert args[1] == sample_round_details_some_incorrect
         assert isinstance(args[2], datetime)  # end_time
         assert args[3] == score
-        
+
         # Проверяем, что create_achievement не вызывался
         achievement_repository_mock.create_achievement.assert_not_awaited()
 
     @pytest.mark.asyncio
-    @patch('uuid.uuid4', return_value='achievement-uuid-123')
+    @patch("uuid.uuid4", return_value="achievement-uuid-123")
     async def test_finish_session_with_achievement(
-        self, mock_uuid, session_service, session_repository_mock, 
-        achievement_repository_mock, sample_round_details_all_correct
+        self,
+        mock_uuid,
+        session_service,
+        session_repository_mock,
+        achievement_repository_mock,
+        sample_round_details_all_correct,
     ):
         """Тест завершения сессии с достижением Perfect Streak"""
         session_id = "test_session_456"
         user_id = "test_user_456"
         score = 100
-        
+
         # Вызываем тестируемый метод
-        await session_service.finish_session(session_id, user_id, sample_round_details_all_correct, score)
-        
+        await session_service.finish_session(
+            session_id, user_id, sample_round_details_all_correct, score
+        )
+
         # Проверяем, что update_session вызван с правильными параметрами
         session_repository_mock.update_session.assert_awaited_once()
         args = session_repository_mock.update_session.await_args.args
@@ -129,7 +146,7 @@ class TestSessionService:
         assert args[1] == sample_round_details_all_correct
         assert isinstance(args[2], datetime)  # end_time
         assert args[3] == score
-        
+
         # Проверяем, что create_achievement вызван с правильными параметрами
         achievement_repository_mock.create_achievement.assert_awaited_once()
         achievement = achievement_repository_mock.create_achievement.await_args.args[0]
@@ -139,3 +156,45 @@ class TestSessionService:
         assert achievement.type == AchievementType.PERFECT_STREAK
         assert isinstance(achievement.earned_at, datetime)
         assert achievement.session_id == session_id
+
+    @pytest.mark.asyncio
+    async def test_get_active_session_found(
+        self, session_service, session_repository_mock
+    ):
+        """Тест получения активной сессии, когда она есть."""
+        expected_session = SessionModel(
+            session_id="s1",
+            user_id="u1",
+            game_type="guess_animal",
+            start_time=datetime.now(),
+            status=SessionStatus.ACTIVE,
+            score=None,
+            details=[],
+            end_time=None,
+        )
+        session_repository_mock.get_active_session_for_user = AsyncMock(
+            return_value=expected_session
+        )
+
+        session = await session_service.get_active_session("u1")
+
+        assert session == expected_session
+        session_repository_mock.get_active_session_for_user.assert_awaited_once_with(
+            "u1"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_active_session_not_found(
+        self, session_service, session_repository_mock
+    ):
+        """Тест получения активной сессии, когда её нет."""
+        session_repository_mock.get_active_session_for_user = AsyncMock(
+            return_value=None
+        )
+
+        session = await session_service.get_active_session("u2")
+
+        assert session is None
+        session_repository_mock.get_active_session_for_user.assert_awaited_once_with(
+            "u2"
+        )
