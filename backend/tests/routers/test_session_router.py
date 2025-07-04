@@ -2,32 +2,41 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, AsyncMock
 from typing import List
-from datetime import datetime, timezone # Добавим timezone для offset-aware datetime
+from datetime import datetime, timezone  # Добавим timezone для offset-aware datetime
 
 from routers.session_router import (
     StartSessionRequest,
     StartSessionResponse,
     FinishSessionRequest,
-    FinishSessionResponse
+    FinishSessionResponse,
 )
-from domain.session import SessionModel, RoundDetail, SessionStatus # Импортируем SessionStatus
-from services.session_service import SessionService # Для мокирования
+from domain.session import (
+    SessionModel,
+    RoundDetail,
+    SessionStatus,
+)  # Импортируем SessionStatus
+from services.session_service import SessionService  # Для мокирования
 from shared.dependencies import get_session_service
 
 # Для мокирования
 TEST_USER_ID = "test_user_123"
 
+
 # Фикстура для клиента с переопределенной авторизацией (аналогично test_progress_router)
 @pytest.fixture
 def client_with_auth_override(client: TestClient):
     from shared.auth import get_current_user_id
+
     async def override_get_current_user_id():
         return TEST_USER_ID
+
     client.app.dependency_overrides[get_current_user_id] = override_get_current_user_id
     yield client
     client.app.dependency_overrides.clear()
 
-# --- Тесты для POST /api/session/start --- 
+
+# --- Тесты для POST /api/session/start ---
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("game_type", ["guess_animal", "build_sentence"])
@@ -39,8 +48,10 @@ async def test_start_session_success(
     expected_session_id = "new_session_123"
     # Настраиваем AsyncMock для start_session
     mock_service.start_session = AsyncMock(return_value=expected_session_id)
-    
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     response = client_with_auth_override.post(
         "/api/session/start", json={"game_type": game_type}
@@ -50,6 +61,7 @@ async def test_start_session_success(
     assert response.json() == {"session_id": expected_session_id}
     mock_service.start_session.assert_called_once_with(TEST_USER_ID, game_type)
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
+
 
 @pytest.mark.asyncio
 async def test_start_session_invalid_game_type(client_with_auth_override: TestClient):
@@ -61,7 +73,7 @@ async def test_start_session_invalid_game_type(client_with_auth_override: TestCl
     response_json = response.json()
     assert "detail" in response_json
     # Проверяем, что сообщение об ошибке содержит упоминание gameType и возможных значений
-    assert "invalid gametype" in response_json["detail"].lower() 
+    assert "invalid gametype" in response_json["detail"].lower()
     assert "guess_animal" in response_json["detail"].lower()
     assert "build_sentence" in response_json["detail"].lower()
 
@@ -70,7 +82,10 @@ def test_start_session_unauthorized(client: TestClient):
     """Тест старта сессии без авторизации POST /api/session/start"""
     response = client.post("/api/session/start", json={"game_type": "guess_animal"})
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
+    assert response.json() == {
+        "detail": "Not authenticated. Authorization header is missing."
+    }
+
 
 @pytest.mark.asyncio
 async def test_start_session_service_exception(
@@ -81,12 +96,14 @@ async def test_start_session_service_exception(
     # Настраиваем AsyncMock для start_session, который вызывает исключение
     mock_service.start_session = AsyncMock(side_effect=RuntimeError("Service failure"))
 
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     response = client_with_auth_override.post(
         "/api/session/start", json={"game_type": "guess_animal"}
     )
-    
+
     assert response.status_code == 500
     response_json = response.json()
     assert "detail" in response_json
@@ -95,41 +112,52 @@ async def test_start_session_service_exception(
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
 
 
-# --- Тесты для PATCH /api/session/finish --- 
+# --- Тесты для PATCH /api/session/finish ---
+
 
 @pytest.mark.asyncio
 async def test_finish_session_success(client_with_auth_override: TestClient):
     """Тест успешного завершения сессии PATCH /api/session/finish"""
     mock_service = MagicMock(spec=SessionService)
-    mock_service.finish_session = AsyncMock() # Успешное завершение, ничего не возвращает
-    
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+    mock_service.finish_session = (
+        AsyncMock()
+    )  # Успешное завершение, ничего не возвращает
+
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     session_id_to_finish = "session_abc_123"
     request_data = {
-        "details": [{
-            "question_id": "q1_id",
-            "answer": "a1",
-            "is_correct": True,
-            "time_spent": 5.5
-        }],
-        "score": 10
+        "details": [
+            {
+                "question_id": "q1_id",
+                "answer": "a1",
+                "is_correct": True,
+                "time_spent": 5.5,
+            }
+        ],
+        "score": 10,
     }
 
     response = client_with_auth_override.patch(
-        f"/api/session/finish?session_id={session_id_to_finish}",
-        json=request_data
+        f"/api/session/finish?session_id={session_id_to_finish}", json=request_data
     )
 
     assert response.status_code == 200
     assert response.json() == {"message": "Session finished successfully"}
     mock_service.finish_session.assert_called_once_with(
-        TEST_USER_ID,
         session_id_to_finish,
-        [RoundDetail(question_id="q1_id", answer="a1", is_correct=True, time_spent=5.5)],
-        request_data["score"]
+        TEST_USER_ID,
+        [
+            RoundDetail(
+                question_id="q1_id", answer="a1", is_correct=True, time_spent=5.5
+            )
+        ],
+        request_data["score"],
     )
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
+
 
 @pytest.mark.asyncio
 async def test_finish_session_not_found_value_error(
@@ -139,15 +167,16 @@ async def test_finish_session_not_found_value_error(
     mock_service = MagicMock(spec=SessionService)
     error_message = "Session not found to finish"
     mock_service.finish_session = AsyncMock(side_effect=ValueError(error_message))
-    
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     session_id_to_finish = "non_existent_session"
     request_data = {"details": [], "score": 0}
 
     response = client_with_auth_override.patch(
-        f"/api/session/finish?session_id={session_id_to_finish}",
-        json=request_data
+        f"/api/session/finish?session_id={session_id_to_finish}", json=request_data
     )
 
     assert response.status_code == 404
@@ -155,14 +184,17 @@ async def test_finish_session_not_found_value_error(
     mock_service.finish_session.assert_called_once()
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
 
+
 def test_finish_session_unauthorized(client: TestClient):
     """Тест завершения сессии без авторизации PATCH /api/session/finish"""
     response = client.patch(
-        "/api/session/finish?session_id=any_session",
-        json={"details": [], "score": 0}
+        "/api/session/finish?session_id=any_session", json={"details": [], "score": 0}
     )
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
+    assert response.json() == {
+        "detail": "Not authenticated. Authorization header is missing."
+    }
+
 
 @pytest.mark.asyncio
 async def test_finish_session_service_exception(
@@ -173,16 +205,17 @@ async def test_finish_session_service_exception(
     error_message = "Internal service error during finish"
     mock_service.finish_session = AsyncMock(side_effect=RuntimeError(error_message))
 
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
-    
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
+
     session_id_to_finish = "session_def_456"
     request_data = {"details": [], "score": 0}
 
     response = client_with_auth_override.patch(
-        f"/api/session/finish?session_id={session_id_to_finish}",
-        json=request_data
+        f"/api/session/finish?session_id={session_id_to_finish}", json=request_data
     )
-    
+
     assert response.status_code == 500
     response_json = response.json()
     assert "detail" in response_json
@@ -193,11 +226,12 @@ async def test_finish_session_service_exception(
 
 # --- Тесты для GET /api/session/active ---
 
+
 @pytest.mark.asyncio
 async def test_get_active_session_success_found(client_with_auth_override: TestClient):
     """Тест успешного получения активной сессии GET /api/session/active (сессия найдена)"""
     mock_service = MagicMock(spec=SessionService)
-    
+
     expected_session_data = {
         "session_id": "active_session_789",
         "user_id": TEST_USER_ID,
@@ -206,37 +240,46 @@ async def test_get_active_session_success_found(client_with_auth_override: TestC
         "end_time": None,
         "status": SessionStatus.ACTIVE,
         "score": None,
-        "details": []
+        "details": [],
     }
     expected_session = SessionModel(**expected_session_data)
     mock_service.get_active_session = AsyncMock(return_value=expected_session)
-    
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     response = client_with_auth_override.get("/api/session/active")
 
     assert response.status_code == 200
     response_json = response.json()
-    
+
     assert response_json["session_id"] == expected_session.session_id
     assert response_json["user_id"] == expected_session.user_id
     assert response_json["game_type"] == expected_session.game_type
-    assert response_json["start_time"] == expected_session.start_time.isoformat().replace("+00:00", "Z")
+    assert response_json[
+        "start_time"
+    ] == expected_session.start_time.isoformat().replace("+00:00", "Z")
     assert response_json["end_time"] == expected_session.end_time
     assert response_json["status"] == expected_session.status.value
     assert response_json["score"] == expected_session.score
     assert response_json["details"] == expected_session.details
-    
+
     mock_service.get_active_session.assert_called_once_with(TEST_USER_ID)
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
 
+
 @pytest.mark.asyncio
-async def test_get_active_session_success_not_found(client_with_auth_override: TestClient):
+async def test_get_active_session_success_not_found(
+    client_with_auth_override: TestClient,
+):
     """Тест успешного получения активной сессии GET /api/session/active (сессия не найдена)"""
     mock_service = MagicMock(spec=SessionService)
     mock_service.get_active_session = AsyncMock(return_value=None)
-    
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     response = client_with_auth_override.get("/api/session/active")
 
@@ -245,20 +288,28 @@ async def test_get_active_session_success_not_found(client_with_auth_override: T
     mock_service.get_active_session.assert_called_once_with(TEST_USER_ID)
     client_with_auth_override.app.dependency_overrides.pop(get_session_service, None)
 
+
 def test_get_active_session_unauthorized(client: TestClient):
     """Тест получения активной сессии без авторизации GET /api/session/active"""
     response = client.get("/api/session/active")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated. Authorization header is missing."}
+    assert response.json() == {
+        "detail": "Not authenticated. Authorization header is missing."
+    }
+
 
 @pytest.mark.asyncio
-async def test_get_active_session_service_exception(client_with_auth_override: TestClient):
+async def test_get_active_session_service_exception(
+    client_with_auth_override: TestClient,
+):
     """Тест получения активной сессии при ошибке сервиса GET /api/session/active"""
     mock_service = MagicMock(spec=SessionService)
     error_message = "Service failure while fetching active session"
     mock_service.get_active_session = AsyncMock(side_effect=RuntimeError(error_message))
 
-    client_with_auth_override.app.dependency_overrides[get_session_service] = lambda: mock_service
+    client_with_auth_override.app.dependency_overrides[get_session_service] = (
+        lambda: mock_service
+    )
 
     response = client_with_auth_override.get("/api/session/active")
 
